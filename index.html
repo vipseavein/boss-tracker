@@ -37,7 +37,7 @@
       padding: 4px;
       text-align: center;
       color: #c9d1d9;
-      white-space: nowrap;          /* không cho xuống dòng trong ô */
+      white-space: nowrap; /* giữ nội dung trên 1 dòng */
     }
 
     th {
@@ -56,12 +56,10 @@
       background-color: rgba(88, 166, 255, 0.1) !important;
     }
 
-    /* Giúp ô kế thừa màu nền hàng */
     #bossTable td, #bossTable th {
       background-color: inherit !important;
     }
 
-    /* Hover highlight */
     #bossTable tr:hover {
       background-color: rgba(88, 166, 255, 0.25) !important;
       transition: 0.2s;
@@ -80,18 +78,19 @@
       font-weight: bold;
       text-shadow: 0 0 8px rgba(255,255,255,0.5);
       display: inline-block;
-      margin-left: 4px;
+      margin-left: 6px;
+      padding: 2px 6px;
+      border-radius: 4px;
       min-width: 50px;
       vertical-align: middle;
     }
 
-    /* Màu trạng thái */
+    /* Màu trạng thái chỉ áp dụng cho timer */
     .blue { background-color: #0077ff !important; color: white; }
     .green { background-color: #00cc44 !important; color: black; }
     .yellow { background-color: #ffcc00 !important; color: black; }
     .red { background-color: #ff0033 !important; color: white; }
 
-    /* Khung thông báo */
     #notifications {
       margin-top: 25px;
       text-align: center;
@@ -113,6 +112,7 @@
 </head>
 
 <body>
+
   <!-- Âm thanh khi boss hồi sinh -->
   <audio id="alertSound">
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
@@ -203,96 +203,4 @@
             startTime: newStart
           });
 
-          document.getElementById(id).checked = true;
-        });
-      }
-    });
-
-    let timersData = {};
-    db.ref("timers").on("value", snapshot => {
-      timersData = snapshot.val() || {};
-
-      Object.keys(timersData).forEach(id => {
-        const {checked, startTime} = timersData[id];
-        const timerCell = document.getElementById("t_"+id);
-        const checkbox = document.getElementById(id);
-
-        if (!timerCell || !checkbox) return;
-
-        checkbox.checked = checked;
-
-        if (timerCell.intervalId) {
-          clearInterval(timerCell.intervalId);
-          timerCell.intervalId = null;
-        }
-
-        if (checked) {
-          timerCell.intervalId = setInterval(() => {
-            const elapsed = Math.floor((Date.now()-startTime)/1000);
-            const remain = 240*60 - elapsed;
-
-            if (remain <= 0) {
-              timerCell.textContent = "Boss đã hồi sinh!";
-              timerCell.className = "red";
-              const audio = document.getElementById("alertSound");
-              if (audio) audio.play();
-              clearInterval(timerCell.intervalId);
-              timerCell.intervalId = null;
-            } else {
-              const minutes = Math.floor(remain / 60);
-              const seconds = remain % 60;
-              const mm = String(minutes).padStart(2, '0');
-              const ss = String(seconds).padStart(2, '0');
-              timerCell.textContent = `${mm}:${ss}`;
-
-              if (remain >= 235*60) timerCell.className = "blue";
-              else if (remain > 5*60) timerCell.className = "green";
-              else if (remain > 3*60) timerCell.className = "yellow";
-              else timerCell.className = "red";
-            }
-          },1000);
-        } else {
-          timerCell.textContent = "--";
-          timerCell.className = "";
-        }
-      });
-    });
-
-    setInterval(() => {
-      let soonRespawn = [];
-
-      Object.keys(timersData).forEach(id => {
-        const {checked, startTime} = timersData[id];
-        if (checked) {
-          const remainNow = 240*60 - Math.floor((Date.now()-startTime)/1000);
-          if (remainNow > 0) {
-            const minutes = Math.floor(remainNow / 60);
-            const seconds = remainNow % 60;
-            const mm = String(minutes).padStart(2, '0');
-            const ss = String(seconds).padStart(2, '0');
-            const [ch, boss] = id.split("_");
-
-            let color = "";
-            if (remainNow >= 235*60) color = "blue";
-            else if (remainNow > 5*60) color = "green";
-            else if (remainNow > 3*60) color = "yellow";
-            else color = "red";
-
-            soonRespawn.push({ch, boss, text:`${mm}:${ss}`, remain: remainNow, color});
-          }
-        }
-      });
-
-      soonRespawn.sort((a,b) => a.remain - b.remain);
-
-      notifications.innerHTML = "";
-      soonRespawn.slice(0,5).forEach(item => {
-        const div = document.createElement("div");
-        div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
-        div.className = item.color;
-        notifications.appendChild(div);
-      });
-    },1000);
-  </script>
-</body>
-</html>
+          document
