@@ -3,56 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <title>Boss Tracker Online</title>
+
   <style>
-    body { font-family: Arial, sans-serif; }
-    table { 
-      border-collapse: collapse; 
-      width: 100%; 
-      table-layout: fixed;
+    /* ======= GAME UI THEME ======= */
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 20px;
     }
-    th, td { 
-      border: 1px solid #ccc; 
-      padding: 5px; 
-      text-align: center; 
-      word-wrap: break-word;
-    }
-    th:first-child, td:first-child { width: 60px; }
-    #bossTable tr:nth-child(odd) { 
-  background-color: #e6f7ff !important; 
-}
 
-#bossTable tr:nth-child(even) { 
-  background-color: #b3cccc !important; 
-}
-
-/* Bắt buộc để màu nền hàng hiển thị */
-#bossTable td, #bossTable th {
-  background-color: inherit !important;
-}
-
-/* Tăng kích thước checkbox 50% */
-input[type="checkbox"] {
-  accent-color: #00B0F0;
-  transform: scale(1.5);
-  cursor: pointer;
-}
-
-
-    .blue { background-color: #00B0F0; }
-    .green { background-color: #00FF00; }
-    .yellow { background-color: #FFFF00; }
-    .red { background-color: #FF0000; }
-
-    #notifications {
-      margin-top: 20px;
+    h2 {
       text-align: center;
-      font-weight: bold;
+      color: #58a6ff;
+      text-shadow: 0 0 10px #58a6ff;
+      font-size: 28px;
+      margin-bottom: 20px;
     }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(88, 166, 255, 0.3);
+    }
+
+    th, td {
+      border: 1px solid rgba(88, 166, 255, 0.2);
+      padding: 6px;
+      text-align: center;
+      color: #c9d1d9;
+    }
+
+    th {
+      background: rgba(88, 166, 255, 0.15);
+      color: #58a6ff;
+      font-weight: bold;
+      text-shadow: 0 0 5px #58a6ff;
+    }
+
+    /* Hàng chẵn lẻ */
+    #bossTable tr:nth-child(odd) {
+      background-color: rgba(88, 166, 255, 0.05) !important;
+    }
+
+    #bossTable tr:nth-child(even) {
+      background-color: rgba(88, 166, 255, 0.1) !important;
+    }
+
+    /* Giúp ô kế thừa màu nền hàng */
+    #bossTable td, #bossTable th {
+      background-color: inherit !important;
+    }
+
+    /* Hover highlight */
+    #bossTable tr:hover {
+      background-color: rgba(88, 166, 255, 0.25) !important;
+      transition: 0.2s;
+    }
+
+    /* Checkbox to hơn */
+    input[type="checkbox"] {
+      transform: scale(1.5);
+      cursor: pointer;
+      accent-color: #58a6ff;
+    }
+
+    /* Timer neon */
+    .timer {
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(255,255,255,0.5);
+    }
+
+    /* Màu trạng thái */
+    .blue { background-color: #0077ff !important; color: white; }
+    .green { background-color: #00cc44 !important; color: black; }
+    .yellow { background-color: #ffcc00 !important; color: black; }
+    .red { background-color: #ff0033 !important; color: white; }
+
+    /* Khung thông báo */
+    #notifications {
+      margin-top: 25px;
+      text-align: center;
+    }
+
     #notifications div {
-      margin: 5px auto;
       width: 60%;
-      padding: 5px;
-      border-radius: 4px;
+      margin: 8px auto;
+      padding: 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      color: black;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
   </style>
 
@@ -98,7 +144,6 @@ input[type="checkbox"] {
       table.insertAdjacentHTML("beforeend", row);
     }
 
-    // Sự kiện tick checkbox
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -121,7 +166,6 @@ input[type="checkbox"] {
       }
     });
 
-    // CLICK VÀO THỜI GIAN ĐỂ NHẬP SỐ PHÚT ĐẾM NGƯỢC
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -130,7 +174,7 @@ input[type="checkbox"] {
         timerCell.addEventListener("click", () => {
           const input = prompt("Nhập số PHÚT muốn đếm ngược:");
 
-          if (input === null) return; // Cancel
+          if (input === null) return;
           const minutesInput = parseInt(input);
 
           if (isNaN(minutesInput) || minutesInput <= 0) {
@@ -138,11 +182,9 @@ input[type="checkbox"] {
             return;
           }
 
-          // Tổng thời gian boss hồi: 240 phút
           const totalSeconds = 240 * 60;
           const remainSeconds = minutesInput * 60;
 
-          // startTime mới sao cho còn đúng remainSeconds
           const newStart = Date.now() - (totalSeconds - remainSeconds) * 1000;
 
           db.ref("timers/" + id).set({
@@ -150,18 +192,15 @@ input[type="checkbox"] {
             startTime: newStart
           });
 
-          // Tick checkbox nếu chưa tick
           document.getElementById(id).checked = true;
         });
       }
     });
 
-    // Lắng nghe Firebase và cập nhật bảng
     let timersData = {};
     db.ref("timers").on("value", snapshot => {
       timersData = snapshot.val() || {};
 
-      // Duyệt qua tất cả id trong timers
       Object.keys(timersData).forEach(id => {
         const {checked, startTime} = timersData[id];
         const timerCell = document.getElementById("t_"+id);
@@ -171,14 +210,12 @@ input[type="checkbox"] {
 
         checkbox.checked = checked;
 
-        // Nếu đã có interval cũ thì clear để tránh dùng startTime cũ
         if (timerCell.intervalId) {
           clearInterval(timerCell.intervalId);
           timerCell.intervalId = null;
         }
 
         if (checked) {
-          // Tạo interval mới với startTime mới nhất
           timerCell.intervalId = setInterval(() => {
             const elapsed = Math.floor((Date.now()-startTime)/1000);
             const remain = 240*60 - elapsed;
@@ -208,7 +245,6 @@ input[type="checkbox"] {
       });
     });
 
-    // Cập nhật thông báo
     setInterval(() => {
       let soonRespawn = [];
 
@@ -247,9 +283,3 @@ input[type="checkbox"] {
   </script>
 </body>
 </html>
-
-
-
-
-
-
