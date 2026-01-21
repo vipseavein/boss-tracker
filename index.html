@@ -22,7 +22,7 @@
 
     /* Bộ chọn cột */
     #columnSelector {
-      margin-bottom: 15px;
+      margin-top: 20px;
       padding: 10px;
       background: rgba(255,255,255,0.05);
       border-radius: 6px;
@@ -117,12 +117,13 @@
 
   <h2>Boss Tracker Online</h2>
 
-  <!-- Bộ chọn cột -->
-  <div id="columnSelector"></div>
-
   <table id="bossTable"></table>
 
+  <!-- 5 dòng thông báo -->
   <div id="notifications"></div>
+
+  <!-- KHU VỰC CHỌN CỘT (đã di chuyển xuống dưới thông báo) -->
+  <div id="columnSelector"></div>
 
   <script>
     const firebaseConfig = {
@@ -162,11 +163,11 @@
     }
 
     /* Gắn sự kiện cho checkbox */
-    document.querySelectorAll(".colToggle").forEach(cb => {
-      cb.addEventListener("change", e => {
+    document.addEventListener("change", e => {
+      if (e.target.classList.contains("colToggle")) {
         const col = parseInt(e.target.dataset.col);
         toggleColumn(col, e.target.checked);
-      });
+      }
     });
 
     /* Tạo bảng */
@@ -185,7 +186,7 @@
       table.insertAdjacentHTML("beforeend", row);
     }
 
-    /* Ẩn cột theo trạng thái checkbox ban đầu */
+    /* Ẩn cột theo trạng thái ban đầu */
     document.querySelectorAll(".colToggle").forEach(cb => {
       toggleColumn(parseInt(cb.dataset.col), cb.checked);
     });
