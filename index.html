@@ -61,9 +61,9 @@
       });
       row += "</tr>";
       table.insertAdjacentHTML("beforeend", row);
-
     }
 
+    // Lắng nghe tick
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -81,9 +81,23 @@
             timerCell.className = "";
           }
         });
+
+        // Cho phép chỉnh sửa thời gian bằng cách click vào timer
+        const timerCell = document.getElementById("t_"+id);
+        timerCell.addEventListener("click", () => {
+          if (timerCell.textContent.includes(":")) {
+            const input = prompt("Nhập thời gian mới (MM:ss):", timerCell.textContent);
+            if (!input || !/^\d{1,3}:\d{2}$/.test(input)) return;
+            const [mm, ss] = input.split(":").map(Number);
+            const newRemain = mm * 60 + ss;
+            const newStartTime = Date.now() - (240*60 - newRemain)*1000;
+            db.ref("timers/"+id).set({checked:true, startTime:newStartTime});
+          }
+        });
       }
     });
 
+    // Lắng nghe Firebase
     db.ref("timers").on("value", snapshot => {
       const data = snapshot.val() || {};
       Object.keys(data).forEach(id => {
@@ -121,5 +135,3 @@
   </script>
 </body>
 </html>
-
-
