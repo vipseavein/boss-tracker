@@ -24,6 +24,25 @@
     .green { background: #00FF00; }
     .yellow { background: #FFFF00; }
     .red { background: #FF0000; }
+
+    .cell-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .edit-btn {
+      cursor: pointer;
+      margin-left: 5px;
+      color: #333;
+    }
+    .edit-btn:hover {
+      color: #007bff;
+    }
+    .timer {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -57,7 +76,14 @@
       let row = `<tr><td>${ch}</td>`;
       bosses.forEach(boss => {
         const id = `${ch}_${boss}`;
-        row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
+        row += `
+          <td>
+            <div class="cell-container">
+              <input type="checkbox" id="${id}">
+              <span class="edit-btn" id="edit_${id}">✏️</span>
+            </div>
+            <div class="timer" id="t_${id}">--</div>
+          </td>`;
       });
       row += "</tr>";
       table.insertAdjacentHTML("beforeend", row);
@@ -67,8 +93,11 @@
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
-        document.getElementById(id).addEventListener("change", e => {
-          const timerCell = document.getElementById("t_"+id);
+        const checkbox = document.getElementById(id);
+        const timerCell = document.getElementById("t_"+id);
+        const editBtn = document.getElementById("edit_"+id);
+
+        checkbox.addEventListener("change", e => {
           if (e.target.checked) {
             db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
           } else {
@@ -82,17 +111,14 @@
           }
         });
 
-        // Cho phép chỉnh sửa thời gian bằng cách click vào timer
-        const timerCell = document.getElementById("t_"+id);
-        timerCell.addEventListener("click", () => {
-          if (timerCell.textContent.includes(":")) {
-            const input = prompt("Nhập thời gian mới (MM:ss):", timerCell.textContent);
-            if (!input || !/^\d{1,3}:\d{2}$/.test(input)) return;
-            const [mm, ss] = input.split(":").map(Number);
-            const newRemain = mm * 60 + ss;
-            const newStartTime = Date.now() - (240*60 - newRemain)*1000;
-            db.ref("timers/"+id).set({checked:true, startTime:newStartTime});
-          }
+        // Click vào bút để chỉnh sửa thời gian
+        editBtn.addEventListener("click", () => {
+          const input = prompt("Nhập thời gian mới (MM:ss):", timerCell.textContent);
+          if (!input || !/^\d{1,3}:\d{2}$/.test(input)) return;
+          const [mm, ss] = input.split(":").map(Number);
+          const newRemain = mm * 60 + ss;
+          const newStartTime = Date.now() - (240*60 - newRemain)*1000;
+          db.ref("timers/"+id).set({checked:true, startTime:newStartTime});
         });
       }
     });
