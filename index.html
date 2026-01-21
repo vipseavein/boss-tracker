@@ -102,6 +102,14 @@
       color: black;
       box-shadow: 0 0 10px rgba(255,255,255,0.3);
     }
+
+    /* Highlight hàng và cột */
+    .highlight-row td {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    .highlight-col {
+      background-color: rgba(255, 255, 255, 0.12) !important;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -110,7 +118,6 @@
 
 <body>
 
-  <!-- Âm thanh khi boss hồi sinh -->
   <audio id="alertSound">
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
   </audio>
@@ -119,10 +126,9 @@
 
   <table id="bossTable"></table>
 
-  <!-- 5 dòng thông báo -->
   <div id="notifications"></div>
 
-  <!-- KHU VỰC CHỌN CỘT (đã di chuyển xuống dưới thông báo) -->
+  <!-- KHU VỰC CHỌN CỘT -->
   <div id="columnSelector"></div>
 
   <script>
@@ -153,6 +159,13 @@
       `;
     });
 
+    /* Khôi phục trạng thái ẩn/hiện cột */
+    const saved = JSON.parse(localStorage.getItem("columnVisibility") || "{}");
+    document.querySelectorAll(".colToggle").forEach(cb => {
+      const col = cb.dataset.col;
+      if (saved[col] !== undefined) cb.checked = saved[col];
+    });
+
     /* Hàm ẩn/hiện cột */
     function toggleColumn(colIndex, show) {
       const rows = table.rows;
@@ -162,11 +175,17 @@
       }
     }
 
-    /* Gắn sự kiện cho checkbox */
+    /* Lưu trạng thái khi thay đổi */
     document.addEventListener("change", e => {
       if (e.target.classList.contains("colToggle")) {
         const col = parseInt(e.target.dataset.col);
         toggleColumn(col, e.target.checked);
+
+        const save = {};
+        document.querySelectorAll(".colToggle").forEach(cb => {
+          save[cb.dataset.col] = cb.checked;
+        });
+        localStorage.setItem("columnVisibility", JSON.stringify(save));
       }
     });
 
@@ -177,23 +196,41 @@
     table.innerHTML = header;
 
     for (let ch = 1; ch <= 30; ch++) {
-  let row = `<tr><td title="Channel ${ch}">${ch}</td>`;
-  bosses.forEach(boss => {
-    const id = `${ch}_${boss}`;
-    row += `
-      <td title="Channel ${ch} – Boss ${boss}">
-        <input type="checkbox" id="${id}">
-        <div class="timer" id="t_${id}">--</div>
-      </td>`;
-  });
-  row += "</tr>";
-  table.insertAdjacentHTML("beforeend", row);
-}
+      let row = `<tr><td>${ch}</td>`;
+      bosses.forEach(boss => {
+        const id = `${ch}_${boss}`;
+        row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
+      });
+      row += "</tr>";
+      table.insertAdjacentHTML("beforeend", row);
+    }
 
-
-    /* Ẩn cột theo trạng thái ban đầu */
+    /* Áp dụng trạng thái ẩn/hiện cột */
     document.querySelectorAll(".colToggle").forEach(cb => {
       toggleColumn(parseInt(cb.dataset.col), cb.checked);
+    });
+
+    /* === Highlight hàng và cột === */
+    table.addEventListener("mousemove", function(e) {
+      const cell = e.target.closest("td,th");
+      if (!cell) return;
+
+      [...table.rows].forEach(r => r.classList.remove("highlight-row"));
+      [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
+
+      const row = cell.parentElement;
+      const colIndex = cell.cellIndex;
+
+      row.classList.add("highlight-row");
+
+      [...table.rows].forEach(r => {
+        if (r.cells[colIndex]) r.cells[colIndex].classList.add("highlight-col");
+      });
+    });
+
+    table.addEventListener("mouseleave", function() {
+      [...table.rows].forEach(r => r.classList.remove("highlight-row"));
+      [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
     });
 
     /* --- Giữ nguyên toàn bộ logic Firebase của bạn --- */
@@ -318,4 +355,3 @@
   </script>
 </body>
 </html>
-
