@@ -60,9 +60,7 @@
         row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
       });
       row += "</tr>";
-      const temp = document.createElement("tbody");
-temp.innerHTML = row;
-table.appendChild(temp.firstElementChild);
+      table.insertAdjacentHTML("beforeend", row);
 
     }
 
@@ -123,4 +121,5 @@ table.appendChild(temp.firstElementChild);
   </script>
 </body>
 </html>
+
 
