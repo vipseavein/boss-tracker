@@ -12,16 +12,16 @@
     .yellow { background: #FFFF00; }
     .red { background: #FF0000; }
   </style>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+  <!-- Firebase SDK v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
   <h2>Boss Tracker Online</h2>
   <table id="bossTable"></table>
 
   <script>
-    // Cấu hình Firebase (thay bằng config của bạn)
+    // Cấu hình Firebase (thay bằng config của bạn nếu khác)
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -31,7 +31,7 @@
       messagingSenderId: "968667523286",
       appId: "1:968667523286:web:a8c750376cfe9df7310177"
     };
-    const app = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     const bosses = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
@@ -80,6 +80,7 @@
           checkbox.checked = false;
           timerCell.textContent = "--";
           timerCell.className = "";
+          if (timerCell.intervalId) clearInterval(timerCell.intervalId);
         }
       });
       // Cập nhật theo dữ liệu Firebase
@@ -89,8 +90,6 @@
         const checkbox = document.getElementById(id);
         checkbox.checked = checked;
         if (checked) {
-          // Xóa interval cũ nếu có
-          if (timerCell.intervalId) clearInterval(timerCell.intervalId);
           timerCell.intervalId = setInterval(() => {
             const elapsed = Math.floor((Date.now()-startTime)/1000);
             const remain = 240*60 - elapsed;
