@@ -14,14 +14,14 @@
   </style>
   <!-- Firebase SDK v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
 <body>
   <h2>Boss Tracker Online</h2>
   <table id="bossTable"></table>
 
   <script>
-    // Cấu hình Firebase (thay bằng config của bạn nếu khác)
+    // Cấu hình Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -59,10 +59,17 @@
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
         document.getElementById(id).addEventListener("change", e => {
+          const timerCell = document.getElementById("t_"+id);
           if (e.target.checked) {
             db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
           } else {
             db.ref("timers/"+id).remove();
+            if (timerCell.intervalId) {
+              clearInterval(timerCell.intervalId);
+              timerCell.intervalId = null;
+            }
+            timerCell.textContent = "--";
+            timerCell.className = "";
           }
         });
       }
@@ -71,46 +78,36 @@
     // Lắng nghe Firebase
     db.ref("timers").on("value", snapshot => {
       const data = snapshot.val() || {};
-      // Reset tất cả trước
-      bosses.forEach(boss => {
-        for (let ch = 1; ch <= 30; ch++) {
-          const id = `${ch}_${boss}`;
-          const timerCell = document.getElementById("t_"+id);
-          const checkbox = document.getElementById(id);
-          checkbox.checked = false;
-          timerCell.textContent = "--";
-          timerCell.className = "";
-          if (timerCell.intervalId) clearInterval(timerCell.intervalId);
-        }
-      });
-      // Cập nhật theo dữ liệu Firebase
       Object.keys(data).forEach(id => {
         const {checked, startTime} = data[id];
         const timerCell = document.getElementById("t_"+id);
         const checkbox = document.getElementById(id);
         checkbox.checked = checked;
         if (checked) {
-          timerCell.intervalId = setInterval(() => {
-            const elapsed = Math.floor((Date.now()-startTime)/1000);
-            const remain = 240*60 - elapsed;
-            if (remain <= 0) {
-              timerCell.textContent = "Boss đã hồi sinh!";
-              timerCell.className = "red";
-              clearInterval(timerCell.intervalId);
-            } else {
-              const min = Math.floor(remain/60);
-              const sec = remain%60;
-              timerCell.textContent = `${min}m ${sec}s`;
-              if (remain >= 235*60) timerCell.className = "blue";
-              else if (remain > 5*60) timerCell.className = "green";
-              else if (remain > 3*60) timerCell.className = "yellow";
-              else timerCell.className = "red";
-            }
-          },1000);
+          // Chỉ tạo interval nếu chưa có
+          if (!timerCell.intervalId) {
+            timerCell.intervalId = setInterval(() => {
+              const elapsed = Math.floor((Date.now()-startTime)/1000);
+              const remain = 240*60 - elapsed;
+              if (remain <= 0) {
+                timerCell.textContent = "Boss đã hồi sinh!";
+                timerCell.className = "red";
+                clearInterval(timerCell.intervalId);
+                timerCell.intervalId = null;
+              } else {
+                const min = Math.floor(remain/60);
+                const sec = remain%60;
+                timerCell.textContent = `${min}m ${sec}s`;
+                if (remain >= 235*60) timerCell.className = "blue";
+                else if (remain > 5*60) timerCell.className = "green";
+                else if (remain > 3*60) timerCell.className = "yellow";
+                else timerCell.className = "red";
+              }
+            },1000);
+          }
         }
       });
     });
   </script>
 </body>
 </html>
-
