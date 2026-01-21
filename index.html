@@ -20,7 +20,7 @@
     tr:nth-child(odd) { background-color: #e6f7ff; }
     tr:nth-child(even) { background-color: #cce0e0; }
 
-    /* màu nền cho bảng */
+    /* màu nền cho bảng và thông báo */
     .blue { background-color: #00B0F0; }
     .green { background-color: #00FF00; }
     .yellow { background-color: #FFFF00; }
@@ -134,12 +134,20 @@
                 else if (remain > 5*60) timerCell.className = "green";
                 else if (remain > 3*60) timerCell.className = "yellow";
                 else timerCell.className = "red";
-
-                // thêm vào danh sách để sắp xếp
-                const [ch, boss] = id.split("_");
-                soonRespawn.push({ch, boss, remain, color: timerCell.className});
               }
             },1000);
+          }
+
+          // thêm vào danh sách để hiển thị thông báo
+          const elapsedNow = Math.floor((Date.now()-startTime)/1000);
+          const remainNow = 240*60 - elapsedNow;
+          if (remainNow > 0) {
+            const minutes = Math.floor(remainNow / 60);
+            const seconds = remainNow % 60;
+            const mm = String(minutes).padStart(2, '0');
+            const ss = String(seconds).padStart(2, '0');
+            const [ch, boss] = id.split("_");
+            soonRespawn.push({ch, boss, remain: remainNow, text:`${mm}:${ss}`, color: timerCell.className});
           }
         }
       });
@@ -151,7 +159,7 @@
       notifications.innerHTML = "";
       soonRespawn.slice(0,5).forEach(item => {
         const div = document.createElement("div");
-        div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.remain} giây`;
+        div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
         div.className = item.color; // giữ màu nền giống bảng
         notifications.appendChild(div);
       });
