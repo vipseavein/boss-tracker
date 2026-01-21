@@ -80,7 +80,7 @@
       table.insertAdjacentHTML("beforeend", row);
     }
 
-    // Tick checkbox
+    // Sự kiện tick checkbox
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -103,77 +103,94 @@
       }
     });
 
-    // ⭐ CLICK VÀO THỜI GIAN ĐỂ CHỈNH SỬA
+    // CLICK VÀO THỜI GIAN ĐỂ NHẬP SỐ PHÚT ĐẾM NGƯỢC
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
         const timerCell = document.getElementById("t_" + id);
 
         timerCell.addEventListener("click", () => {
-          const newSec = prompt("Nhập số giây muốn đếm ngược:");
+          const input = prompt("Nhập số PHÚT muốn đếm ngược:");
 
-          if (newSec === null) return;
-          const sec = parseInt(newSec);
+          if (input === null) return; // Cancel
+          const minutesInput = parseInt(input);
 
-          if (isNaN(sec) || sec <= 0) {
-            alert("Vui lòng nhập số nguyên dương!");
+          if (isNaN(minutesInput) || minutesInput <= 0) {
+            alert("Vui lòng nhập số nguyên dương (phút)!");
             return;
           }
 
-          const newStart = Date.now() - (240*60 - sec) * 1000;
+          // Tổng thời gian boss hồi: 240 phút
+          const totalSeconds = 240 * 60;
+          const remainSeconds = minutesInput * 60;
+
+          // startTime mới sao cho còn đúng remainSeconds
+          const newStart = Date.now() - (totalSeconds - remainSeconds) * 1000;
 
           db.ref("timers/" + id).set({
             checked: true,
             startTime: newStart
           });
 
+          // Tick checkbox nếu chưa tick
           document.getElementById(id).checked = true;
         });
       }
     });
 
-    // Lắng nghe Firebase
+    // Lắng nghe Firebase và cập nhật bảng
     let timersData = {};
     db.ref("timers").on("value", snapshot => {
       timersData = snapshot.val() || {};
 
+      // Duyệt qua tất cả id trong timers
       Object.keys(timersData).forEach(id => {
         const {checked, startTime} = timersData[id];
         const timerCell = document.getElementById("t_"+id);
         const checkbox = document.getElementById(id);
 
+        if (!timerCell || !checkbox) return;
+
         checkbox.checked = checked;
 
+        // Nếu đã có interval cũ thì clear để tránh dùng startTime cũ
+        if (timerCell.intervalId) {
+          clearInterval(timerCell.intervalId);
+          timerCell.intervalId = null;
+        }
+
         if (checked) {
-          if (!timerCell.intervalId) {
-            timerCell.intervalId = setInterval(() => {
-              const elapsed = Math.floor((Date.now()-startTime)/1000);
-              const remain = 240*60 - elapsed;
+          // Tạo interval mới với startTime mới nhất
+          timerCell.intervalId = setInterval(() => {
+            const elapsed = Math.floor((Date.now()-startTime)/1000);
+            const remain = 240*60 - elapsed;
 
-              if (remain <= 0) {
-                timerCell.textContent = "Boss đã hồi sinh!";
-                timerCell.className = "red";
-                clearInterval(timerCell.intervalId);
-                timerCell.intervalId = null;
-              } else {
-                const minutes = Math.floor(remain / 60);
-                const seconds = remain % 60;
-                const mm = String(minutes).padStart(2, '0');
-                const ss = String(seconds).padStart(2, '0');
-                timerCell.textContent = `${mm}:${ss}`;
+            if (remain <= 0) {
+              timerCell.textContent = "Boss đã hồi sinh!";
+              timerCell.className = "red";
+              clearInterval(timerCell.intervalId);
+              timerCell.intervalId = null;
+            } else {
+              const minutes = Math.floor(remain / 60);
+              const seconds = remain % 60;
+              const mm = String(minutes).padStart(2, '0');
+              const ss = String(seconds).padStart(2, '0');
+              timerCell.textContent = `${mm}:${ss}`;
 
-                if (remain >= 235*60) timerCell.className = "blue";
-                else if (remain > 5*60) timerCell.className = "green";
-                else if (remain > 3*60) timerCell.className = "yellow";
-                else timerCell.className = "red";
-              }
-            },1000);
-          }
+              if (remain >= 235*60) timerCell.className = "blue";
+              else if (remain > 5*60) timerCell.className = "green";
+              else if (remain > 3*60) timerCell.className = "yellow";
+              else timerCell.className = "red";
+            }
+          },1000);
+        } else {
+          timerCell.textContent = "--";
+          timerCell.className = "";
         }
       });
     });
 
-    // Thông báo
+    // Cập nhật thông báo
     setInterval(() => {
       let soonRespawn = [];
 
