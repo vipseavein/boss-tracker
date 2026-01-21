@@ -5,14 +5,26 @@
   <title>Boss Tracker Online</title>
   <style>
     body { font-family: Arial, sans-serif; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+    table { 
+      border-collapse: collapse; 
+      width: 100%; 
+      table-layout: fixed;
+    }
+    th, td { 
+      border: 1px solid #ccc; 
+      padding: 5px; 
+      text-align: center; 
+      word-wrap: break-word;
+    }
+    th:first-child, td:first-child { width: 60px; }
+    tr:nth-child(odd) { background-color: #e6f7ff; }
+    tr:nth-child(even) { background-color: #cce0e0; }
+
     .blue { background: #00B0F0; }
     .green { background: #00FF00; }
     .yellow { background: #FFFF00; }
     .red { background: #FF0000; }
   </style>
-  <!-- Firebase SDK v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
@@ -21,7 +33,6 @@
   <table id="bossTable"></table>
 
   <script>
-    // Cấu hình Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -37,13 +48,11 @@
     const bosses = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
     const table = document.getElementById("bossTable");
 
-    // Tạo header
     let header = "<tr><th>Channel</th>";
     bosses.forEach(b => header += `<th>${b}</th>`);
     header += "</tr>";
     table.innerHTML = header;
 
-    // Tạo bảng 30 channel × 13 boss
     for (let ch = 1; ch <= 30; ch++) {
       let row = `<tr><td>${ch}</td>`;
       bosses.forEach(boss => {
@@ -54,7 +63,6 @@
       table.innerHTML += row;
     }
 
-    // Lắng nghe tick
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -75,7 +83,6 @@
       }
     });
 
-    // Lắng nghe Firebase
     db.ref("timers").on("value", snapshot => {
       const data = snapshot.val() || {};
       Object.keys(data).forEach(id => {
@@ -84,7 +91,6 @@
         const checkbox = document.getElementById(id);
         checkbox.checked = checked;
         if (checked) {
-          // Chỉ tạo interval nếu chưa có
           if (!timerCell.intervalId) {
             timerCell.intervalId = setInterval(() => {
               const elapsed = Math.floor((Date.now()-startTime)/1000);
@@ -95,9 +101,12 @@
                 clearInterval(timerCell.intervalId);
                 timerCell.intervalId = null;
               } else {
-                const min = Math.floor(remain/60);
-                const sec = remain%60;
-                timerCell.textContent = `${min}m ${sec}s`;
+                const minutes = Math.floor(remain / 60);
+                const seconds = remain % 60;
+                const mm = String(minutes).padStart(2, '0');
+                const ss = String(seconds).padStart(2, '0');
+                timerCell.textContent = `${mm}:${ss}`;
+
                 if (remain >= 235*60) timerCell.className = "blue";
                 else if (remain > 5*60) timerCell.className = "green";
                 else if (remain > 3*60) timerCell.className = "yellow";
