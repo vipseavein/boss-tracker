@@ -34,7 +34,7 @@
 
     th, td {
       border: 1px solid rgba(88, 166, 255, 0.2);
-      padding: 6px;
+      padding: 4px;
       text-align: center;
       color: #c9d1d9;
     }
@@ -68,15 +68,25 @@
 
     /* Checkbox to hơn */
     input[type="checkbox"] {
-      transform: scale(1.5);
+      transform: scale(1.3);
       cursor: pointer;
       accent-color: #58a6ff;
+    }
+
+    /* Checkbox + time cùng 1 hàng, giảm chiều cao ô */
+    #bossTable td {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
     }
 
     /* Timer neon */
     .timer {
       font-weight: bold;
       text-shadow: 0 0 8px rgba(255,255,255,0.5);
+      display: inline-block;
+      min-width: 50px;
     }
 
     /* Màu trạng thái */
@@ -107,8 +117,7 @@
 </head>
 
 <body>
-
-  <!-- ÂM THANH BOSS HỒI SINH -->
+  <!-- Âm thanh khi boss hồi sinh -->
   <audio id="alertSound">
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
   </audio>
@@ -144,19 +153,12 @@
       let row = `<tr><td>${ch}</td>`;
       bosses.forEach(boss => {
         const id = `${ch}_${boss}`;
-
-        /* CHECKBOX + TIMER CÙNG 1 HÀNG */
-        row += `
-          <td style="display:flex; align-items:center; gap:6px; justify-content:center;">
-            <input type="checkbox" id="${id}">
-            <span class="timer" id="t_${id}">--</span>
-          </td>`;
+        row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
       });
       row += "</tr>";
       table.insertAdjacentHTML("beforeend", row);
     }
 
-    /* SỰ KIỆN CHECKBOX */
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -179,7 +181,6 @@
       }
     });
 
-    /* CLICK ĐỂ NHẬP SỐ PHÚT */
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -211,10 +212,6 @@
       }
     });
 
-    /* CẢNH BÁO < 3 PHÚT */
-    let warned = {};
-
-    /* LẮNG NGHE FIREBASE */
     let timersData = {};
     db.ref("timers").on("value", snapshot => {
       timersData = snapshot.val() || {};
@@ -238,33 +235,26 @@
             const elapsed = Math.floor((Date.now()-startTime)/1000);
             const remain = 240*60 - elapsed;
 
-            /* ÂM THANH KHI BOSS HỒI SINH */
             if (remain <= 0) {
               timerCell.textContent = "Boss đã hồi sinh!";
               timerCell.className = "red";
-              document.getElementById("alertSound").play();
+              // Âm thanh khi boss hồi sinh
+              const audio = document.getElementById("alertSound");
+              if (audio) audio.play();
               clearInterval(timerCell.intervalId);
               timerCell.intervalId = null;
-              return;
+            } else {
+              const minutes = Math.floor(remain / 60);
+              const seconds = remain % 60;
+              const mm = String(minutes).padStart(2, '0');
+              const ss = String(seconds).padStart(2, '0');
+              timerCell.textContent = `${mm}:${ss}`;
+
+              if (remain >= 235*60) timerCell.className = "blue";
+              else if (remain > 5*60) timerCell.className = "green";
+              else if (remain > 3*60) timerCell.className = "yellow";
+              else timerCell.className = "red";
             }
-
-            /* POPUP CẢNH BÁO < 3 PHÚT */
-            if (remain < 180 && !warned[id]) {
-              warned[id] = true;
-              alert(`⚠️ Boss ${id.split("_")[1]} tại kênh ${id.split("_")[0]} sẽ hồi sinh sau < 3 phút!`);
-            }
-
-            const minutes = Math.floor(remain / 60);
-            const seconds = remain % 60;
-            const mm = String(minutes).padStart(2, '0');
-            const ss = String(seconds).padStart(2, '0');
-            timerCell.textContent = `${mm}:${ss}`;
-
-            if (remain >= 235*60) timerCell.className = "blue";
-            else if (remain > 5*60) timerCell.className = "green";
-            else if (remain > 3*60) timerCell.className = "yellow";
-            else timerCell.className = "red";
-
           },1000);
         } else {
           timerCell.textContent = "--";
@@ -273,7 +263,6 @@
       });
     });
 
-    /* THÔNG BÁO TOP 5 */
     setInterval(() => {
       let soonRespawn = [];
 
