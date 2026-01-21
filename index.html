@@ -20,10 +20,11 @@
     tr:nth-child(odd) { background-color: #e6f7ff; }
     tr:nth-child(even) { background-color: #cce0e0; }
 
-    .blue { color: #00B0F0; }
-    .green { color: #00FF00; }
-    .yellow { color: #CCCC00; }
-    .red { color: #FF0000; }
+    /* màu nền cho bảng */
+    .blue { background-color: #00B0F0; }
+    .green { background-color: #00FF00; }
+    .yellow { background-color: #FFFF00; }
+    .red { background-color: #FF0000; }
 
     #notifications {
       margin-top: 20px;
@@ -31,7 +32,10 @@
       font-weight: bold;
     }
     #notifications div {
-      margin: 5px 0;
+      margin: 5px auto;
+      width: 60%;
+      padding: 5px;
+      border-radius: 4px;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -133,7 +137,7 @@
 
                 // thêm vào danh sách để sắp xếp
                 const [ch, boss] = id.split("_");
-                soonRespawn.push({ch, boss, remain});
+                soonRespawn.push({ch, boss, remain, color: timerCell.className});
               }
             },1000);
           }
@@ -148,13 +152,7 @@
       soonRespawn.slice(0,5).forEach(item => {
         const div = document.createElement("div");
         div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.remain} giây`;
-
-        // Đổi màu chữ giống logic bảng
-        if (item.remain >= 235*60) div.className = "blue";
-        else if (item.remain > 5*60) div.className = "green";
-        else if (item.remain > 3*60) div.className = "yellow";
-        else div.className = "red";
-
+        div.className = item.color; // giữ màu nền giống bảng
         notifications.appendChild(div);
       });
     });
