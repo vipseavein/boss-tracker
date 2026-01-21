@@ -24,6 +24,15 @@
     .green { background: #00FF00; }
     .yellow { background: #FFFF00; }
     .red { background: #FF0000; }
+
+    #notifications {
+      margin-top: 20px;
+      text-align: center;
+      font-weight: bold;
+    }
+    #notifications div {
+      margin: 5px 0;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -31,6 +40,9 @@
 <body>
   <h2>Boss Tracker Online</h2>
   <table id="bossTable"></table>
+
+  <!-- Vùng thông báo -->
+  <div id="notifications"></div>
 
   <script>
     const firebaseConfig = {
@@ -47,6 +59,7 @@
 
     const bosses = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
     const table = document.getElementById("bossTable");
+    const notifications = document.getElementById("notifications");
 
     let header = "<tr><th>Channel</th>";
     bosses.forEach(b => header += `<th>${b}</th>`);
@@ -67,8 +80,10 @@
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
-        document.getElementById(id).addEventListener("change", e => {
-          const timerCell = document.getElementById("t_"+id);
+        const checkbox = document.getElementById(id);
+        const timerCell = document.getElementById("t_"+id);
+
+        checkbox.addEventListener("change", e => {
           if (e.target.checked) {
             db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
           } else {
@@ -81,25 +96,14 @@
             timerCell.className = "";
           }
         });
-
-        // Cho phép chỉnh sửa thời gian bằng cách click vào timer
-        const timerCell = document.getElementById("t_"+id);
-        timerCell.addEventListener("click", () => {
-          if (timerCell.textContent.includes(":")) {
-            const input = prompt("Nhập thời gian mới (MM:ss):", timerCell.textContent);
-            if (!input || !/^\d{1,3}:\d{2}$/.test(input)) return;
-            const [mm, ss] = input.split(":").map(Number);
-            const newRemain = mm * 60 + ss;
-            const newStartTime = Date.now() - (240*60 - newRemain)*1000;
-            db.ref("timers/"+id).set({checked:true, startTime:newStartTime});
-          }
-        });
       }
     });
 
     // Lắng nghe Firebase
     db.ref("timers").on("value", snapshot => {
       const data = snapshot.val() || {};
+      let soonRespawn = [];
+
       Object.keys(data).forEach(id => {
         const {checked, startTime} = data[id];
         const timerCell = document.getElementById("t_"+id);
@@ -126,10 +130,24 @@
                 else if (remain > 5*60) timerCell.className = "green";
                 else if (remain > 3*60) timerCell.className = "yellow";
                 else timerCell.className = "red";
+
+                // Nếu còn dưới 300 giây thì thêm vào danh sách thông báo
+                if (remain <= 300) {
+                  const [ch, boss] = id.split("_");
+                  soonRespawn.push(`Kênh ${ch} - Boss ${boss} - Còn ${remain} giây`);
+                }
               }
             },1000);
           }
         }
+      });
+
+      // Hiển thị tối đa 5 thông báo
+      notifications.innerHTML = "";
+      soonRespawn.slice(0,5).forEach(msg => {
+        const div = document.createElement("div");
+        div.textContent = msg;
+        notifications.appendChild(div);
       });
     });
   </script>
