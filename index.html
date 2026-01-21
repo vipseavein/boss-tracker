@@ -5,11 +5,15 @@
   <title>Boss Tracker Online</title>
 
   <style>
+    /* ===========================
+       DARK MODE (MẶC ĐỊNH)
+       =========================== */
     body {
       font-family: Arial, sans-serif;
       background: #0d1117;
       color: #e6edf3;
       padding: 20px;
+      transition: 0.3s;
     }
 
     h2 {
@@ -20,19 +24,6 @@
       margin-bottom: 20px;
     }
 
-    /* Bộ chọn cột */
-    #columnSelector {
-      margin-top: 20px;
-      padding: 10px;
-      background: rgba(255,255,255,0.05);
-      border-radius: 6px;
-      box-shadow: 0 0 10px rgba(88,166,255,0.3);
-    }
-    #columnSelector label {
-      margin-right: 12px;
-      cursor: pointer;
-    }
-
     table {
       width: 100%;
       border-collapse: collapse;
@@ -41,6 +32,7 @@
       border-radius: 10px;
       overflow: hidden;
       box-shadow: 0 0 15px rgba(88, 166, 255, 0.3);
+      transition: 0.3s;
     }
 
     th, td {
@@ -49,6 +41,7 @@
       text-align: center;
       color: #c9d1d9;
       white-space: nowrap;
+      transition: 0.3s;
     }
 
     th {
@@ -110,6 +103,73 @@
     .highlight-col {
       background-color: rgba(255, 255, 255, 0.12) !important;
     }
+
+    /* ===========================
+       LIGHT MODE
+       =========================== */
+    body.light {
+      background: #f2f2f2;
+      color: #222;
+    }
+
+    body.light table {
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
+
+    body.light th {
+      background: #d0e4ff;
+      color: #003366;
+      text-shadow: none;
+    }
+
+    body.light td {
+      color: #222;
+      border-color: #aac4e6;
+    }
+
+    body.light #bossTable tr:nth-child(odd) {
+      background-color: #f7fbff !important;
+    }
+    body.light #bossTable tr:nth-child(even) {
+      background-color: #eaf4ff !important;
+    }
+
+    body.light .timer {
+      text-shadow: none;
+    }
+
+    body.light #notifications div {
+      color: black;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
+
+    body.light .highlight-row td {
+      background-color: rgba(0, 0, 0, 0.05) !important;
+    }
+    body.light .highlight-col {
+      background-color: rgba(0, 0, 0, 0.08) !important;
+    }
+
+    /* Nút chuyển Dark/Light */
+    #themeToggle {
+      margin-top: 15px;
+      float: right;
+      padding: 8px 14px;
+      background: #58a6ff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(88,166,255,0.4);
+      transition: 0.3s;
+    }
+
+    body.light #themeToggle {
+      background: #003366;
+      color: white;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -128,10 +188,44 @@
 
   <div id="notifications"></div>
 
+  <!-- Nút chuyển Dark/Light -->
+  <button id="themeToggle">Light Mode</button>
+
   <!-- KHU VỰC CHỌN CỘT -->
   <div id="columnSelector"></div>
 
   <script>
+    /* ===========================
+       DARK / LIGHT MODE
+       =========================== */
+
+    const themeToggle = document.getElementById("themeToggle");
+
+    function applyTheme(mode) {
+      if (mode === "light") {
+        document.body.classList.add("light");
+        themeToggle.textContent = "Dark Mode";
+      } else {
+        document.body.classList.remove("light");
+        themeToggle.textContent = "Light Mode";
+      }
+    }
+
+    // Load theme từ LocalStorage
+    const savedTheme = localStorage.getItem("themeMode") || "dark";
+    applyTheme(savedTheme);
+
+    themeToggle.addEventListener("click", () => {
+      const newTheme = document.body.classList.contains("light") ? "dark" : "light";
+      applyTheme(newTheme);
+      localStorage.setItem("themeMode", newTheme);
+    });
+
+    /* ===========================
+       Firebase + Bảng + Ẩn cột
+       (GIỮ NGUYÊN TOÀN BỘ CODE)
+       =========================== */
+
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -233,7 +327,7 @@
       [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
     });
 
-    /* --- Giữ nguyên toàn bộ logic Firebase của bạn --- */
+    /* === Firebase countdown giữ nguyên === */
 
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
