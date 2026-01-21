@@ -103,13 +103,12 @@
       }
     });
 
-    // Lắng nghe Firebase
+    // Lắng nghe Firebase và cập nhật bảng
+    let timersData = {};
     db.ref("timers").on("value", snapshot => {
-      const data = snapshot.val() || {};
-      let soonRespawn = [];
-
-      Object.keys(data).forEach(id => {
-        const {checked, startTime} = data[id];
+      timersData = snapshot.val() || {};
+      Object.keys(timersData).forEach(id => {
+        const {checked, startTime} = timersData[id];
         const timerCell = document.getElementById("t_"+id);
         const checkbox = document.getElementById(id);
         checkbox.checked = checked;
@@ -137,33 +136,42 @@
               }
             },1000);
           }
+        }
+      });
+    });
 
-          // thêm vào danh sách để hiển thị thông báo
-          const elapsedNow = Math.floor((Date.now()-startTime)/1000);
-          const remainNow = 240*60 - elapsedNow;
+    // Cập nhật thông báo mỗi giây
+    setInterval(() => {
+      let soonRespawn = [];
+      Object.keys(timersData).forEach(id => {
+        const {checked, startTime} = timersData[id];
+        if (checked) {
+          const remainNow = 240*60 - Math.floor((Date.now()-startTime)/1000);
           if (remainNow > 0) {
             const minutes = Math.floor(remainNow / 60);
             const seconds = remainNow % 60;
             const mm = String(minutes).padStart(2, '0');
             const ss = String(seconds).padStart(2, '0');
             const [ch, boss] = id.split("_");
-            soonRespawn.push({ch, boss, remain: remainNow, text:`${mm}:${ss}`, color: timerCell.className});
+            let color = "";
+            if (remainNow >= 235*60) color = "blue";
+            else if (remainNow > 5*60) color = "green";
+            else if (remainNow > 3*60) color = "yellow";
+            else color = "red";
+            soonRespawn.push({ch, boss, text:`${mm}:${ss}`, remain: remainNow, color});
           }
         }
       });
 
-      // Sắp xếp theo thời gian còn lại tăng dần
       soonRespawn.sort((a,b) => a.remain - b.remain);
-
-      // Hiển thị tối đa 5 thông báo
       notifications.innerHTML = "";
       soonRespawn.slice(0,5).forEach(item => {
         const div = document.createElement("div");
         div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
-        div.className = item.color; // giữ màu nền giống bảng
+        div.className = item.color;
         notifications.appendChild(div);
       });
-    });
+    },1000);
   </script>
 </body>
 </html>
