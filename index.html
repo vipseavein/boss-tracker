@@ -60,7 +60,10 @@
         row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
       });
       row += "</tr>";
-      table.innerHTML += row;
+      const temp = document.createElement("tbody");
+temp.innerHTML = row;
+table.appendChild(temp.firstElementChild);
+
     }
 
     bosses.forEach(boss => {
@@ -120,3 +123,4 @@
   </script>
 </body>
 </html>
+
