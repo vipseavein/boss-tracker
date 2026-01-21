@@ -177,14 +177,19 @@
     table.innerHTML = header;
 
     for (let ch = 1; ch <= 30; ch++) {
-      let row = `<tr><td>${ch}</td>`;
-      bosses.forEach(boss => {
-        const id = `${ch}_${boss}`;
-        row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
-      });
-      row += "</tr>";
-      table.insertAdjacentHTML("beforeend", row);
-    }
+  let row = `<tr><td title="Channel ${ch}">${ch}</td>`;
+  bosses.forEach(boss => {
+    const id = `${ch}_${boss}`;
+    row += `
+      <td title="Channel ${ch} – Boss ${boss}">
+        <input type="checkbox" id="${id}">
+        <div class="timer" id="t_${id}">--</div>
+      </td>`;
+  });
+  row += "</tr>";
+  table.insertAdjacentHTML("beforeend", row);
+}
+
 
     /* Ẩn cột theo trạng thái ban đầu */
     document.querySelectorAll(".colToggle").forEach(cb => {
@@ -313,3 +318,4 @@
   </script>
 </body>
 </html>
+
