@@ -415,7 +415,7 @@
             const remain = 240*60 - elapsed;
 
             if (remain <= 0) {
-              timerCell.textContent = "Boss đã hồi sinh!";
+              timerCell.textContent = "Respawned!";
               timerCell.className = "timer red";
               try { document.getElementById("alertSound").play(); } catch(e){}
               clearInterval(timerCell.intervalId);
@@ -475,4 +475,5 @@
   </script>
 </body>
 </html>
+
 
