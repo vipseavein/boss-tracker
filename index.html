@@ -44,6 +44,12 @@
       transition: 0.3s;
     }
 
+    /* THU HẸP CỘT CHANNEL */
+    th.channel-col, td.channel-col {
+      width: 1%;
+      white-space: nowrap;
+    }
+
     th {
       background: rgba(88, 166, 255, 0.15);
       color: #58a6ff;
@@ -84,6 +90,7 @@
     #notifications {
       margin-top: 25px;
       text-align: center;
+      position: relative;
     }
 
     #notifications div {
@@ -94,6 +101,7 @@
       font-weight: bold;
       color: black;
       box-shadow: 0 0 10px rgba(255,255,255,0.3);
+      position: relative;
     }
 
     /* Highlight hàng và cột */
@@ -151,11 +159,9 @@
       background-color: rgba(0, 0, 0, 0.08) !important;
     }
 
-    /* Nút chuyển Dark/Light */
+    /* Nút chuyển Dark/Light – cố định bên phải */
     #themeToggle {
-      margin-top: 15px;
-      float: right;
-      padding: 8px 14px;
+      padding: 6px 12px;
       background: #58a6ff;
       border: none;
       border-radius: 6px;
@@ -164,11 +170,31 @@
       cursor: pointer;
       box-shadow: 0 0 10px rgba(88,166,255,0.4);
       transition: 0.3s;
+      font-size: 13px;
+
+      position: fixed;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 999;
     }
 
     body.light #themeToggle {
       background: #003366;
       color: white;
+    }
+
+    /* Bộ chọn cột */
+    #columnSelector {
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(88,166,255,0.3);
+    }
+    #columnSelector label {
+      margin-right: 12px;
+      cursor: pointer;
     }
   </style>
 
@@ -181,6 +207,7 @@
   <audio id="alertSound">
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
   </audio>
+
   <h2>Boss Tracker - Cabal Ultimate Combo (SEA)</h2>
 
   <table id="bossTable"></table>
@@ -210,7 +237,6 @@
       }
     }
 
-    // Load theme từ LocalStorage
     const savedTheme = localStorage.getItem("themeMode") || "dark";
     applyTheme(savedTheme);
 
@@ -222,7 +248,6 @@
 
     /* ===========================
        Firebase + Bảng + Ẩn cột
-       (GIỮ NGUYÊN TOÀN BỘ CODE)
        =========================== */
 
     const firebaseConfig = {
@@ -283,13 +308,13 @@
     });
 
     /* Tạo bảng */
-    let header = "<tr><th>Channel</th>";
+    let header = "<tr><th class='channel-col'>Channel</th>";
     bosses.forEach(b => header += `<th>${b}</th>`);
     header += "</tr>";
     table.innerHTML = header;
 
     for (let ch = 1; ch <= 30; ch++) {
-      let row = `<tr><td>${ch}</td>`;
+      let row = `<tr><td class="channel-col">${ch}</td>`;
       bosses.forEach(boss => {
         const id = `${ch}_${boss}`;
         row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
@@ -303,7 +328,7 @@
       toggleColumn(parseInt(cb.dataset.col), cb.checked);
     });
 
-    /* === Highlight hàng và cột === */
+    /* Highlight hàng & cột */
     table.addEventListener("mousemove", function(e) {
       const cell = e.target.closest("td,th");
       if (!cell) return;
@@ -326,8 +351,7 @@
       [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
     });
 
-    /* === Firebase countdown giữ nguyên === */
-
+    /* Firebase countdown */
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -448,6 +472,3 @@
   </script>
 </body>
 </html>
-
-
-
