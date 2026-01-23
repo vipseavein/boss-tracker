@@ -20,6 +20,20 @@
       margin-bottom: 20px;
     }
 
+    #filters {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    select, input[type="date"] {
+      padding: 6px 10px;
+      margin: 0 5px;
+      border-radius: 6px;
+      border: 1px solid #58a6ff;
+      background: #0d1117;
+      color: #e6edf3;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -65,6 +79,26 @@
 
   <h2>Lịch sử thao tác Checkbox</h2>
 
+  <!-- BỘ LỌC -->
+  <div id="filters">
+    <select id="filterChannel">
+      <option value="">-- Lọc theo kênh --</option>
+    </select>
+
+    <select id="filterBoss">
+      <option value="">-- Lọc theo boss --</option>
+    </select>
+
+    <select id="filterAction">
+      <option value="">-- Hành động --</option>
+      <option value="check">✔ Bật</option>
+      <option value="uncheck">✘ Tắt</option>
+    </select>
+
+    <input type="date" id="filterDate">
+  </div>
+
+  <!-- BẢNG LOG -->
   <table id="logTable">
     <tr>
       <th>Thời gian</th>
@@ -89,9 +123,50 @@
     const db = firebase.database();
 
     const logTable = document.getElementById("logTable");
+    const filterChannel = document.getElementById("filterChannel");
+    const filterBoss = document.getElementById("filterBoss");
+    const filterAction = document.getElementById("filterAction");
+    const filterDate = document.getElementById("filterDate");
+
+    let allLogs = [];
 
     /* Lấy log theo thời gian thực */
     db.ref("logs").orderByChild("time").on("value", snapshot => {
+      allLogs = [];
+
+      snapshot.forEach(item => {
+        const log = item.val();
+        allLogs.push(log);
+      });
+
+      fillFilterOptions();
+      renderLogs();
+    });
+
+    /* Tạo danh sách lọc */
+    function fillFilterOptions() {
+      const channels = new Set();
+      const bosses = new Set();
+
+      allLogs.forEach(log => {
+        const [ch, boss] = log.id.split("_");
+        channels.add(ch);
+        bosses.add(boss);
+      });
+
+      filterChannel.innerHTML = `<option value="">-- Lọc theo kênh --</option>`;
+      channels.forEach(ch => {
+        filterChannel.innerHTML += `<option value="${ch}">Kênh ${ch}</option>`;
+      });
+
+      filterBoss.innerHTML = `<option value="">-- Lọc theo boss --</option>`;
+      bosses.forEach(boss => {
+        filterBoss.innerHTML += `<option value="${boss}">${boss}</option>`;
+      });
+    }
+
+    /* Hiển thị log */
+    function renderLogs() {
       logTable.innerHTML = `
         <tr>
           <th>Thời gian</th>
@@ -101,10 +176,22 @@
         </tr>
       `;
 
-      snapshot.forEach(item => {
-        const log = item.val();
-
+      allLogs.forEach(log => {
         const [ch, boss] = log.id.split("_");
+
+        if (filterChannel.value && filterChannel.value !== ch) return;
+        if (filterBoss.value && filterBoss.value !== boss) return;
+        if (filterAction.value && filterAction.value !== log.action) return;
+
+        if (filterDate.value) {
+          const logDate = new Date(log.time);
+          const yyyy = logDate.getFullYear();
+          const mm = String(logDate.getMonth() + 1).padStart(2, "0");
+          const dd = String(logDate.getDate()).padStart(2, "0");
+          const formatted = `${yyyy}-${mm}-${dd}`;
+
+          if (formatted !== filterDate.value) return;
+        }
 
         const time = new Date(log.time);
         const timeStr =
@@ -125,7 +212,13 @@
 
         logTable.insertAdjacentHTML("beforeend", row);
       });
-    });
+    }
+
+    /* Kích hoạt lọc */
+    filterChannel.onchange =
+    filterBoss.onchange =
+    filterAction.onchange =
+    filterDate.onchange = renderLogs;
   </script>
 
 </body>
