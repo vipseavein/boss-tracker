@@ -69,6 +69,29 @@
       color: #ff4444;
       font-weight: bold;
     }
+
+    /* Pagination */
+    #pagination {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #pagination button {
+      padding: 6px 12px;
+      margin: 0 5px;
+      background: #58a6ff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #pagination span {
+      margin: 0 10px;
+      font-size: 16px;
+      color: #58a6ff;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -108,8 +131,14 @@
     </tr>
   </table>
 
+  <!-- PHÂN TRANG -->
+  <div id="pagination">
+    <button id="prevPage">Trang trước</button>
+    <span id="pageInfo">Trang 1</span>
+    <button id="nextPage">Trang sau</button>
+  </div>
+
   <script>
-    /* Firebase config */
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -129,8 +158,11 @@
     const filterDate = document.getElementById("filterDate");
 
     let allLogs = [];
+    let filteredLogs = [];
 
-    /* Lấy log theo thời gian thực */
+    let currentPage = 1;
+    const rowsPerPage = 20;
+
     db.ref("logs").orderByChild("time").on("value", snapshot => {
       allLogs = [];
 
@@ -140,11 +172,38 @@
         allLogs.push(log);
       });
 
-      fillFilterOptions();
-      renderLogs();
+      applyFilters();
     });
 
-    /* Tạo danh sách lọc */
+    function applyFilters() {
+      filteredLogs = allLogs.filter(log => {
+        const parts = log.id.split("_");
+        if (parts.length < 2) return false;
+
+        const ch = parts[0];
+        const boss = parts.slice(1).join("_");
+
+        if (filterChannel.value && filterChannel.value !== ch) return false;
+        if (filterBoss.value && filterBoss.value !== boss) return false;
+        if (filterAction.value && filterAction.value !== log.action) return false;
+
+        if (filterDate.value) {
+          const d = new Date(log.time);
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          if (`${yyyy}-${mm}-${dd}` !== filterDate.value) return false;
+        }
+
+        return true;
+      });
+
+      currentPage = 1;
+      renderPagination();
+      renderLogs();
+      fillFilterOptions();
+    }
+
     function fillFilterOptions() {
       const channels = new Set();
       const bosses = new Set();
@@ -152,26 +211,17 @@
       allLogs.forEach(log => {
         const parts = log.id.split("_");
         if (parts.length < 2) return;
-
-        const ch = parts[0];
-        const boss = parts.slice(1).join("_");
-
-        channels.add(ch);
-        bosses.add(boss);
+        channels.add(parts[0]);
+        bosses.add(parts.slice(1).join("_"));
       });
 
       filterChannel.innerHTML = `<option value="">-- Lọc theo kênh --</option>`;
-      channels.forEach(ch => {
-        filterChannel.innerHTML += `<option value="${ch}">Kênh ${ch}</option>`;
-      });
+      channels.forEach(ch => filterChannel.innerHTML += `<option value="${ch}">Kênh ${ch}</option>`);
 
       filterBoss.innerHTML = `<option value="">-- Lọc theo boss --</option>`;
-      bosses.forEach(boss => {
-        filterBoss.innerHTML += `<option value="${boss}">${boss}</option>`;
-      });
+      bosses.forEach(b => filterBoss.innerHTML += `<option value="${b}">${b}</option>`);
     }
 
-    /* Hiển thị log */
     function renderLogs() {
       logTable.innerHTML = `
         <tr>
@@ -182,34 +232,18 @@
         </tr>
       `;
 
-      allLogs.forEach(log => {
-        const parts = log.id.split("_");
-        if (parts.length < 2) return;
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
 
+      filteredLogs.slice(start, end).forEach(log => {
+        const parts = log.id.split("_");
         const ch = parts[0];
         const boss = parts.slice(1).join("_");
 
-        if (filterChannel.value && filterChannel.value !== ch) return;
-        if (filterBoss.value && filterBoss.value !== boss) return;
-        if (filterAction.value && filterAction.value !== log.action) return;
-
-        if (filterDate.value) {
-          const logDate = new Date(log.time);
-          const yyyy = logDate.getFullYear();
-          const mm = String(logDate.getMonth() + 1).padStart(2, "0");
-          const dd = String(logDate.getDate()).padStart(2, "0");
-          const formatted = `${yyyy}-${mm}-${dd}`;
-
-          if (formatted !== filterDate.value) return;
-        }
-
         const time = new Date(log.time);
-        const timeStr =
-          time.toLocaleTimeString("vi-VN") +
-          " - " +
-          time.toLocaleDateString("vi-VN");
+        const timeStr = time.toLocaleTimeString("vi-VN") + " - " + time.toLocaleDateString("vi-VN");
 
-        const row = `
+        logTable.insertAdjacentHTML("beforeend", `
           <tr>
             <td>${timeStr}</td>
             <td>${ch}</td>
@@ -218,17 +252,36 @@
               ${log.action === "check" ? "✔ Bật" : "✘ Tắt"}
             </td>
           </tr>
-        `;
-
-        logTable.insertAdjacentHTML("beforeend", row);
+        `);
       });
     }
 
-    /* Kích hoạt lọc */
+    function renderPagination() {
+      const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
+      document.getElementById("pageInfo").textContent = `Trang ${currentPage} / ${totalPages || 1}`;
+    }
+
+    document.getElementById("prevPage").onclick = () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPagination();
+        renderLogs();
+      }
+    };
+
+    document.getElementById("nextPage").onclick = () => {
+      const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPagination();
+        renderLogs();
+      }
+    };
+
     filterChannel.onchange =
     filterBoss.onchange =
     filterAction.onchange =
-    filterDate.onchange = renderLogs;
+    filterDate.onchange = applyFilters;
   </script>
 
 </body>
