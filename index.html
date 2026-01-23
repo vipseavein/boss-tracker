@@ -44,8 +44,11 @@
       transition: 0.3s;
     }
 
+    /* ===========================
+       THU HẸP CỘT CHANNEL = 1/2 CỘT BOSS
+       =========================== */
     th.channel-col, td.channel-col {
-      width: calc(100% / 26);
+      width: calc(100% / 26); /* 1/2 của 1 cột boss (boss = 100/13) */
       white-space: nowrap;
     }
 
@@ -103,6 +106,7 @@
       position: relative;
     }
 
+    /* Highlight hàng và cột */
     .highlight-row td {
       background-color: rgba(255, 255, 255, 0.08) !important;
     }
@@ -157,7 +161,7 @@
       background-color: rgba(0, 0, 0, 0.08) !important;
     }
 
-    /* Nút Light Mode */
+    /* Nút chuyển Dark/Light – cố định bên phải */
     #themeToggle {
       padding: 6px 12px;
       background: #58a6ff;
@@ -170,38 +174,17 @@
       transition: 0.3s;
       font-size: 13px;
 
-      position: fixed;
-      right: 20px;
-      bottom: 20px;
+       position: fixed;
+  right: 20px;
+  bottom: 20px;
+  transform: none;
+
       z-index: 999;
     }
 
     body.light #themeToggle {
       background: #003366;
       color: white;
-    }
-
-    /* Nút LOG */
-    #logButton {
-      padding: 6px 12px;
-      background: #ff9800;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(255,152,0,0.4);
-      transition: 0.3s;
-      font-size: 13px;
-
-      position: fixed;
-      right: 20px;
-      bottom: 60px;
-      z-index: 999;
-    }
-
-    body.light #logButton {
-      background: #cc7a00;
     }
 
     /* Bộ chọn cột */
@@ -236,9 +219,7 @@
 
   <!-- Nút chuyển Dark/Light -->
   <button id="themeToggle">Light Mode</button>
-
-  <!-- Nút LOG -->
-  <button id="logButton">LOG</button>
+   <button id="logButton">LOG</button>
 
   <!-- KHU VỰC CHỌN CỘT -->
   <div id="columnSelector"></div>
@@ -267,13 +248,6 @@
       const newTheme = document.body.classList.contains("light") ? "dark" : "light";
       applyTheme(newTheme);
       localStorage.setItem("themeMode", newTheme);
-    });
-
-    /* ===========================
-       NÚT LOG
-       =========================== */
-    document.getElementById("logButton").addEventListener("click", () => {
-      window.location.href = "log.html";
     });
 
     /* ===========================
@@ -381,7 +355,7 @@
       [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
     });
 
-    /* Firebase countdown + LOG */
+    /* Firebase countdown */
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
         const id = `${ch}_${boss}`;
@@ -389,28 +363,31 @@
         const timerCell = document.getElementById("t_"+id);
 
         checkbox.addEventListener("change", e => {
-          if (e.target.checked) {
-            db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
+  if (e.target.checked) {
+    db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
 
-            db.ref("logs").push({
-              id: id,
-              action: "check",
-              time: Date.now()
-            });
+    // Ghi log CHECK
+    db.ref("logs").push({
+      id: id,
+      action: "check",
+      time: Date.now()
+    });
 
-          } else {
-            db.ref("timers/"+id).remove();
-            if (timerCell.intervalId) clearInterval(timerCell.intervalId);
-            timerCell.textContent = "--";
-            timerCell.className = "timer";
+  } else {
+    db.ref("timers/"+id).remove();
+    if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+    timerCell.textContent = "--";
+    timerCell.className = "timer";
 
-            db.ref("logs").push({
-              id: id,
-              action: "uncheck",
-              time: Date.now()
-            });
-          }
-        });
+    // Ghi log UNCHECK
+    db.ref("logs").push({
+      id: id,
+      action: "uncheck",
+      time: Date.now()
+    });
+  }
+});
+
       }
     });
 
@@ -496,4 +473,29 @@
 
         let color = remainNow >= 235*60 ? "blue"
                   : remainNow > 5*60 ? "green"
-                  :
+                  : remainNow > 3*60 ? "yellow"
+                  : "red";
+
+        soonRespawn.push({ch, boss, text:`${mm}:${ss}`, remain: remainNow, color});
+      });
+
+      soonRespawn.sort((a,b) => a.remain - b.remain);
+
+      notifications.innerHTML = "";
+      soonRespawn.slice(0,5).forEach(item => {
+        const div = document.createElement("div");
+        div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
+        div.className = item.color;
+        notifications.appendChild(div);
+      });
+    },1000);
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
