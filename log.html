@@ -136,10 +136,7 @@
 
       snapshot.forEach(item => {
         const log = item.val();
-
-        // Bỏ qua log lỗi hoặc thiếu dữ liệu
         if (!log || !log.id || !log.time) return;
-
         allLogs.push(log);
       });
 
