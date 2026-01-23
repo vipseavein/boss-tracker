@@ -362,15 +362,31 @@
         const timerCell = document.getElementById("t_"+id);
 
         checkbox.addEventListener("change", e => {
-          if (e.target.checked) {
-            db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
-          } else {
-            db.ref("timers/"+id).remove();
-            if (timerCell.intervalId) clearInterval(timerCell.intervalId);
-            timerCell.textContent = "--";
-            timerCell.className = "timer";
-          }
-        });
+  if (e.target.checked) {
+    db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
+
+    // Ghi log CHECK
+    db.ref("logs").push({
+      id: id,
+      action: "check",
+      time: Date.now()
+    });
+
+  } else {
+    db.ref("timers/"+id).remove();
+    if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+    timerCell.textContent = "--";
+    timerCell.className = "timer";
+
+    // Ghi log UNCHECK
+    db.ref("logs").push({
+      id: id,
+      action: "uncheck",
+      time: Date.now()
+    });
+  }
+});
+
       }
     });
 
@@ -475,6 +491,7 @@
   </script>
 </body>
 </html>
+
 
 
 
