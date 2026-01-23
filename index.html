@@ -337,7 +337,6 @@
     document.querySelectorAll(".colToggle").forEach(cb => {
       toggleColumn(parseInt(cb.dataset.col), cb.checked);
     });
-
     /* Highlight */
     table.addEventListener("mousemove", function(e) {
       const cell = e.target.closest("td,th");
@@ -361,7 +360,7 @@
       [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
     });
 
-    /* Countdown + LOG + RIGHT CLICK COLOR */
+    /* Countdown + LOG + RIGHT CLICK COLOR + RIGHT CLICK TIMER */
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
 
@@ -369,7 +368,7 @@
         const checkbox = document.getElementById(id);
         const timerCell = document.getElementById("t_"+id);
 
-        /* Chuột trái */
+        /* Chuột trái checkbox */
         checkbox.addEventListener("change", e => {
           if (e.target.checked) {
             db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
@@ -394,7 +393,7 @@
           }
         });
 
-        /* Chuột phải → đổi màu vàng + lưu Firebase */
+        /* Chuột phải checkbox → đổi màu vàng + lưu Firebase */
         checkbox.addEventListener("contextmenu", e => {
           e.preventDefault();
 
@@ -408,6 +407,28 @@
             colorRef.set(true);
           }
         });
+
+        /* Chuột phải timer → nhập số phút */
+        timerCell.addEventListener("contextmenu", e => {
+          e.preventDefault();
+
+          const input = prompt("Nhập số PHÚT muốn đếm ngược:");
+          if (input === null) return;
+
+          const minutesInput = parseInt(input);
+          if (isNaN(minutesInput) || minutesInput <= 0) {
+            alert("Vui lòng nhập số nguyên dương!");
+            return;
+          }
+
+          const totalSeconds = 240 * 60;
+          const remainSeconds = minutesInput * 60;
+          const newStart = Date.now() - (totalSeconds - remainSeconds) * 1000;
+
+          db.ref("timers/" + id).set({ checked: true, startTime: newStart });
+          checkbox.checked = true;
+        });
+
       }
     });
 
@@ -466,8 +487,7 @@
         }
       });
     });
-
-    /* Notifications */
+        /* Notifications */
     setInterval(() => {
       let soonRespawn = [];
 
@@ -500,6 +520,7 @@
         notifications.appendChild(div);
       });
     },1000);
+
   </script>
 </body>
 </html>
