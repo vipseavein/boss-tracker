@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Lịch sử thao tác – Boss Tracker</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #58a6ff;
+      text-shadow: 0 0 10px #58a6ff;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(88,166,255,0.3);
+    }
+
+    th, td {
+      border: 1px solid rgba(88,166,255,0.2);
+      padding: 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    th {
+      background: rgba(88,166,255,0.2);
+      color: #58a6ff;
+      font-weight: bold;
+    }
+
+    tr:nth-child(even) {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .check {
+      color: #00ff88;
+      font-weight: bold;
+    }
+
+    .uncheck {
+      color: #ff4444;
+      font-weight: bold;
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+
+<body>
+
+  <h2>Lịch sử thao tác Checkbox</h2>
+
+  <table id="logTable">
+    <tr>
+      <th>Thời gian</th>
+      <th>Kênh</th>
+      <th>Boss</th>
+      <th>Hành động</th>
+    </tr>
+  </table>
+
+  <script>
+    /* Firebase config (giữ nguyên từ file chính) */
+    const firebaseConfig = {
+      apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
+      authDomain: "boss-tracker-9e069.firebaseapp.com",
+      databaseURL: "https://boss-tracker-9e069-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "boss-tracker-9e069",
+      storageBucket: "boss-tracker-9e069.appspot.com",
+      messagingSenderId: "968667523286",
+      appId: "1:968667523286:web:a8c750376cfe9df7310177"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const logTable = document.getElementById("logTable");
+
+    /* Lấy log theo thời gian thực */
+    db.ref("logs").orderByChild("time").on("value", snapshot => {
+      logTable.innerHTML = `
+        <tr>
+          <th>Thời gian</th>
+          <th>Kênh</th>
+          <th>Boss</th>
+          <th>Hành động</th>
+        </tr>
+      `;
+
+      snapshot.forEach(item => {
+        const log = item.val();
+
+        const [ch, boss] = log.id.split("_");
+
+        const time = new Date(log.time);
+        const timeStr =
+          time.toLocaleTimeString("vi-VN") +
+          " - " +
+          time.toLocaleDateString("vi-VN");
+
+        const row = `
+          <tr>
+            <td>${timeStr}</td>
+            <td>${ch}</td>
+            <td>${boss}</td>
+            <td class="${log.action}">
+              ${log.action === "check" ? "✔ Bật" : "✘ Tắt"}
+            </td>
+          </tr>
+        `;
+
+        logTable.insertAdjacentHTML("beforeend", row);
+      });
+    });
+  </script>
+
+</body>
+</html>
