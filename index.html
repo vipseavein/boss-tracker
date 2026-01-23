@@ -67,6 +67,13 @@
       vertical-align: middle;
     }
 
+    /* MÀU VÀNG KHI CHUỘT PHẢI */
+    .right-clicked {
+      outline: 3px solid #ffeb3b !important;
+      box-shadow: 0 0 10px #ffeb3b;
+      border-radius: 4px;
+    }
+
     .timer {
       font-weight: bold;
       text-shadow: 0 0 8px rgba(255,255,255,0.5);
@@ -174,7 +181,6 @@
       color: white;
     }
 
-    /* Nút LOG */
     #logButton {
       padding: 6px 12px;
       background: #ff9800;
@@ -253,12 +259,11 @@
       localStorage.setItem("themeMode", newTheme);
     });
 
-    /* Nút LOG */
     document.getElementById("logButton").addEventListener("click", () => {
       window.location.href = "log.html";
     });
 
-    /* Firebase + bảng */
+    /* Firebase */
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -276,6 +281,7 @@
     const notifications = document.getElementById("notifications");
     const columnSelector = document.getElementById("columnSelector");
 
+    /* Tạo UI chọn cột */
     bosses.forEach((boss, index) => {
       columnSelector.innerHTML += `
         <label>
@@ -312,6 +318,7 @@
       }
     });
 
+    /* Tạo bảng */
     let header = "<tr><th class='channel-col'>Channel</th>";
     bosses.forEach(b => header += `<th>${b}</th>`);
     header += "</tr>";
@@ -331,6 +338,7 @@
       toggleColumn(parseInt(cb.dataset.col), cb.checked);
     });
 
+    /* Highlight */
     table.addEventListener("mousemove", function(e) {
       const cell = e.target.closest("td,th");
       if (!cell) return;
@@ -353,12 +361,15 @@
       [...table.querySelectorAll("td,th")].forEach(c => c.classList.remove("highlight-col"));
     });
 
+    /* Countdown + LOG + RIGHT CLICK COLOR */
     bosses.forEach(boss => {
       for (let ch = 1; ch <= 30; ch++) {
+
         const id = `${ch}_${boss}`;
         const checkbox = document.getElementById(id);
         const timerCell = document.getElementById("t_"+id);
 
+        /* Chuột trái */
         checkbox.addEventListener("change", e => {
           if (e.target.checked) {
             db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
@@ -382,30 +393,35 @@
             });
           }
         });
-      }
-    });
 
-    bosses.forEach(boss => {
-      for (let ch = 1; ch <= 30; ch++) {
-        const id = `${ch}_${boss}`;
-        const timerCell = document.getElementById("t_" + id);
+        /* Chuột phải → đổi màu vàng + lưu Firebase */
+        checkbox.addEventListener("contextmenu", e => {
+          e.preventDefault();
 
-        timerCell.addEventListener("click", () => {
-          const input = prompt("Nhập số PHÚT muốn đếm ngược:");
-          if (input === null) return;
-          const minutesInput = parseInt(input);
-          if (isNaN(minutesInput) || minutesInput <= 0) return alert("Vui lòng nhập số nguyên dương!");
+          const colorRef = db.ref("colors/" + id);
 
-          const totalSeconds = 240 * 60;
-          const remainSeconds = minutesInput * 60;
-          const newStart = Date.now() - (totalSeconds - remainSeconds) * 1000;
-
-          db.ref("timers/" + id).set({ checked: true, startTime: newStart });
-          document.getElementById(id).checked = true;
+          if (checkbox.classList.contains("right-clicked")) {
+            checkbox.classList.remove("right-clicked");
+            colorRef.remove();
+          } else {
+            checkbox.classList.add("right-clicked");
+            colorRef.set(true);
+          }
         });
       }
     });
 
+    /* Khôi phục màu từ Firebase */
+    db.ref("colors").on("value", snapshot => {
+      const colors = snapshot.val() || {};
+
+      Object.keys(colors).forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.classList.add("right-clicked");
+      });
+    });
+
+    /* Countdown */
     let timersData = {};
     db.ref("timers").on("value", snapshot => {
       timersData = snapshot.val() || {};
@@ -451,6 +467,7 @@
       });
     });
 
+    /* Notifications */
     setInterval(() => {
       let soonRespawn = [];
 
