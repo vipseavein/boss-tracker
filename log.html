@@ -109,7 +109,7 @@
   </table>
 
   <script>
-    /* Firebase config (giữ nguyên từ file chính) */
+    /* Firebase config */
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -136,6 +136,10 @@
 
       snapshot.forEach(item => {
         const log = item.val();
+
+        // Bỏ qua log lỗi hoặc thiếu dữ liệu
+        if (!log || !log.id || !log.time) return;
+
         allLogs.push(log);
       });
 
@@ -149,7 +153,12 @@
       const bosses = new Set();
 
       allLogs.forEach(log => {
-        const [ch, boss] = log.id.split("_");
+        const parts = log.id.split("_");
+        if (parts.length < 2) return;
+
+        const ch = parts[0];
+        const boss = parts.slice(1).join("_");
+
         channels.add(ch);
         bosses.add(boss);
       });
@@ -177,7 +186,11 @@
       `;
 
       allLogs.forEach(log => {
-        const [ch, boss] = log.id.split("_");
+        const parts = log.id.split("_");
+        if (parts.length < 2) return;
+
+        const ch = parts[0];
+        const boss = parts.slice(1).join("_");
 
         if (filterChannel.value && filterChannel.value !== ch) return;
         if (filterBoss.value && filterBoss.value !== boss) return;
