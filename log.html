@@ -180,7 +180,7 @@
   <!-- ACTION BUTTONS BOTTOM-LEFT -->
   <div id="actions">
     <button id="exportExcel">Xuất Excel</button>
-    <button id="clearLogs">Xóa toàn bộ log</button>
+    <button id="clearLogs">Xóa log cũ hơn 5 tiếng</button>
   </div>
 
   <!-- BACK BUTTON BOTTOM-RIGHT -->
@@ -359,19 +359,32 @@
       XLSX.writeFile(workbook, "lich_su_log.xlsx");
     });
 
-    /* CLEAR LOGS */
+    /* CLEAR LOGS – chỉ xóa log cũ hơn 5 tiếng */
     document.getElementById("clearLogs").addEventListener("click", () => {
-      if (!confirm("Bạn có chắc muốn xóa toàn bộ log?")) return;
+      if (!confirm("Bạn có chắc muốn xóa log cũ hơn 5 tiếng?")) return;
 
-      db.ref("logs").remove()
-        .then(() => {
-          alert("Đã xóa toàn bộ log!");
-          allLogs = [];
-          filteredLogs = [];
-          renderLogs();
-          renderPagination();
-        })
-        .catch(err => alert("Lỗi khi xóa log: " + err));
+      const now = Date.now();
+      const fiveHours = 5 * 60 * 60 * 1000;
+
+      db.ref("logs").once("value", snapshot => {
+        const logs = snapshot.val() || {};
+
+        Object.keys(logs).forEach(key => {
+          const log = logs[key];
+          if (!log.time) return;
+
+          if (now - log.time > fiveHours) {
+            db.ref("logs/" + key).remove();
+          }
+        });
+
+        alert("Đã xóa log cũ hơn 5 tiếng!");
+
+        allLogs = allLogs.filter(l => now - l.time <= fiveHours);
+        filteredLogs = filteredLogs.filter(l => now - l.time <= fiveHours);
+        renderLogs();
+        renderPagination();
+      });
     });
 
     /* BACK BUTTON */
