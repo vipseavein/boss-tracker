@@ -92,10 +92,49 @@
       font-size: 16px;
       color: #58a6ff;
     }
+
+    /* Action buttons bottom-left */
+    #actions {
+      position: fixed;
+      left: 20px;
+      bottom: 20px;
+      z-index: 999;
+    }
+
+    #actions button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    #exportExcel { background: #28a745; color: white; }
+    #clearLogs { background: #dc3545; color: white; }
+
+    /* Back button bottom-right */
+    #backButton {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      padding: 6px 12px;
+      background: #ff9800;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255,152,0,0.4);
+      z-index: 999;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <!-- XLSX for Excel export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -137,6 +176,15 @@
     <span id="pageInfo">Trang 1</span>
     <button id="nextPage">Trang sau</button>
   </div>
+
+  <!-- ACTION BUTTONS BOTTOM-LEFT -->
+  <div id="actions">
+    <button id="exportExcel">Xuất Excel</button>
+    <button id="clearLogs">Xóa toàn bộ log</button>
+  </div>
+
+  <!-- BACK BUTTON BOTTOM-RIGHT -->
+  <button id="backButton">Quay lại trang chính</button>
 
   <script>
     const firebaseConfig = {
@@ -282,6 +330,54 @@
     filterBoss.onchange =
     filterAction.onchange =
     filterDate.onchange = applyFilters;
+
+    /* EXPORT EXCEL */
+    document.getElementById("exportExcel").addEventListener("click", () => {
+      if (filteredLogs.length === 0) {
+        alert("Không có dữ liệu để xuất!");
+        return;
+      }
+
+      const data = filteredLogs.map(log => {
+        const parts = log.id.split("_");
+        const ch = parts[0];
+        const boss = parts.slice(1).join("_");
+        const time = new Date(log.time);
+
+        return {
+          "Thời gian": time.toLocaleString("vi-VN"),
+          "Kênh": ch,
+          "Boss": boss,
+          "Hành động": log.action === "check" ? "Bật" : "Tắt"
+        };
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Logs");
+
+      XLSX.writeFile(workbook, "lich_su_log.xlsx");
+    });
+
+    /* CLEAR LOGS */
+    document.getElementById("clearLogs").addEventListener("click", () => {
+      if (!confirm("Bạn có chắc muốn xóa toàn bộ log?")) return;
+
+      db.ref("logs").remove()
+        .then(() => {
+          alert("Đã xóa toàn bộ log!");
+          allLogs = [];
+          filteredLogs = [];
+          renderLogs();
+          renderPagination();
+        })
+        .catch(err => alert("Lỗi khi xóa log: " + err));
+    });
+
+    /* BACK BUTTON */
+    document.getElementById("backButton").addEventListener("click", () => {
+      window.location.href = "index.html";
+    });
   </script>
 
 </body>
