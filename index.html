@@ -434,53 +434,55 @@
     });
 
     /* Notifications */
-    let timersData = {};
+let timersData = {};
 
-    db.ref("timers").on("value", snapshot => {
-      timersData = snapshot.val() || {};
+db.ref("timers").on("value", snapshot => {
+  timersData = snapshot.val() || {};
+});
+
+setInterval(() => {
+  let soonRespawn = [];
+
+  Object.keys(timersData).forEach(id => {
+    const data = timersData[id];
+    if (!data || !data.checked) return;
+
+    const remainNow = 240*60 - Math.floor((Date.now() - data.startTime) / 1000);
+    if (remainNow <= 0) return;
+
+    const mm = String(Math.floor(remainNow / 60)).padStart(2,'0');
+    const ss = String(remainNow % 60).padStart(2,'0');  // ← dòng này đã sửa
+
+    const [ch, boss] = id.split("_");
+
+    let color =
+      remainNow >= 235*60 ? "blue" :
+      remainNow > 5*60   ? "green" :
+      remainNow > 3*60   ? "yellow" :
+                           "red";
+
+    soonRespawn.push({
+      ch,
+      boss,
+      text: `${mm}:${ss}`,
+      remain: remainNow,
+      color
     });
+  });
 
-    setInterval(() => {
-      let soonRespawn = [];
+  soonRespawn.sort((a, b) => a.remain - b.remain);
 
-      Object.keys(timersData).forEach(id => {
-        const data = timersData[id];
-        if (!data || !data.checked) return;
+  notifications.innerHTML = "";
+  soonRespawn.slice(0, 5).forEach(item => {
+    const div = document.createElement("div");
+    div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
+    div.className = item.color;
+    notifications.appendChild(div);
+  });
 
-        const remainNow = 240*60 - Math.floor((Date.now() - data.startTime) / 1000);
-        if (remainNow <= 0) return;
-
-        const mm = String(Math.floor(remainNow / 60)).padStart(2,'0');
-        const ss = String(remainNow % 60)).padStart(2,'0');
-        const [ch, boss] = id.split("_");
-
-        let color =
-          remainNow >= 235*60 ? "blue" :
-          remainNow > 5*60   ? "green" :
-          remainNow > 3*60   ? "yellow" :
-                               "red";
-
-        soonRespawn.push({
-          ch,
-          boss,
-          text: `${mm}:${ss}`,
-          remain: remainNow,
-          color
-        });
-      });
-
-      soonRespawn.sort((a, b) => a.remain - b.remain);
-
-      notifications.innerHTML = "";
-      soonRespawn.slice(0, 5).forEach(item => {
-        const div = document.createElement("div");
-        div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
-        div.className = item.color;
-        notifications.appendChild(div);
-      });
-
-    }, 1000);
+}, 1000);
 
       </script>
 </body>
 </html>
+
