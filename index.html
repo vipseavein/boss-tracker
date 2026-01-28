@@ -67,6 +67,7 @@
       vertical-align: middle;
     }
 
+    /* MÀU VÀNG KHI CHUỘT PHẢI */
     .right-clicked {
       outline: 3px solid #ffeb3b !important;
       box-shadow: 0 0 10px #ffeb3b;
@@ -175,6 +176,11 @@
       z-index: 999;
     }
 
+    body.light #themeToggle {
+      background: #003366;
+      color: white;
+    }
+
     #logButton {
       padding: 6px 12px;
       background: #ff9800;
@@ -191,6 +197,10 @@
       right: 20px;
       bottom: 60px;
       z-index: 999;
+    }
+
+    body.light #logButton {
+      background: #cc7a00;
     }
 
     #columnSelector {
@@ -253,6 +263,7 @@
       window.location.href = "log.html";
     });
 
+    /* Firebase */
     const firebaseConfig = {
       apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
       authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -270,10 +281,62 @@
     const notifications = document.getElementById("notifications");
     const columnSelector = document.getElementById("columnSelector");
 
-        document.querySelectorAll(".colToggle").forEach(cb => {
-      toggleColumn(parseInt(cb.dataset.col), cb.checked);
+    /* Tạo UI chọn cột */
+    bosses.forEach((boss, index) => {
+      columnSelector.innerHTML += `
+        <label>
+          <input type="checkbox" class="colToggle" data-col="${index+1}" checked>
+          ${boss}
+        </label>
+      `;
     });
 
+    const saved = JSON.parse(localStorage.getItem("columnVisibility") || "{}");
+    document.querySelectorAll(".colToggle").forEach(cb => {
+      const col = cb.dataset.col;
+      if (saved[col] !== undefined) cb.checked = saved[col];
+    });
+
+    function toggleColumn(colIndex, show) {
+      const rows = table.rows;
+      for (let r = 0; r < rows.length; r++) {
+        const cell = rows[r].cells[colIndex];
+        if (cell) cell.style.display = show ? "" : "none";
+      }
+    }
+
+    document.addEventListener("change", e => {
+      if (e.target.classList.contains("colToggle")) {
+        const col = parseInt(e.target.dataset.col);
+        toggleColumn(col, e.target.checked);
+
+        const save = {};
+        document.querySelectorAll(".colToggle").forEach(cb => {
+          save[cb.dataset.col] = cb.checked;
+        });
+        localStorage.setItem("columnVisibility", JSON.stringify(save));
+      }
+    });
+
+    /* Tạo bảng */
+    let header = "<tr><th class='channel-col'>Channel</th>";
+    bosses.forEach(b => header += `<th>${b}</th>`);
+    header += "</tr>";
+    table.innerHTML = header;
+
+    for (let ch = 1; ch <= 30; ch++) {
+      let row = `<tr><td class="channel-col">${ch}</td>`;
+      bosses.forEach(boss => {
+        const id = `${ch}_${boss}`;
+        row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
+      });
+      row += "</tr>";
+      table.insertAdjacentHTML("beforeend", row);
+    }
+
+    document.querySelectorAll(".colToggle").forEach(cb => {
+      toggleColumn(parseInt(cb.dataset.col), cb.checked);
+    });
     /* Highlight */
     table.addEventListener("mousemove", function(e) {
       const cell = e.target.closest("td,th");
@@ -308,11 +371,7 @@
         /* Chuột trái checkbox */
         checkbox.addEventListener("change", e => {
           if (e.target.checked) {
-
-            db.ref("timers/"+id).set({
-              checked: true,
-              startTime: Date.now()
-            });
+            db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
 
             db.ref("logs").push({
               id: id,
@@ -321,12 +380,7 @@
             });
 
           } else {
-
-            db.ref("timers/"+id).set({
-              checked: false,
-              startTime: null
-            });
-
+            db.ref("timers/"+id).remove();
             if (timerCell.intervalId) clearInterval(timerCell.intervalId);
             timerCell.textContent = "--";
             timerCell.className = "timer";
@@ -339,7 +393,7 @@
           }
         });
 
-        /* Chuột phải checkbox → đổi màu vàng + đồng bộ nhanh */
+        /* Chuột phải checkbox → đổi màu vàng + lưu Firebase */
         checkbox.addEventListener("contextmenu", e => {
           e.preventDefault();
 
@@ -347,10 +401,10 @@
 
           if (checkbox.classList.contains("right-clicked")) {
             checkbox.classList.remove("right-clicked");
-            colorRef.set({ marked: false });
+            colorRef.remove();
           } else {
             checkbox.classList.add("right-clicked");
-            colorRef.set({ marked: true });
+            colorRef.set(true);
           }
         });
 
@@ -371,38 +425,47 @@
           const remainSeconds = minutesInput * 60;
           const newStart = Date.now() - (totalSeconds - remainSeconds) * 1000;
 
-          db.ref("timers/" + id).set({
-            checked: true,
-            startTime: newStart
-          });
-
+          db.ref("timers/" + id).set({ checked: true, startTime: newStart });
           checkbox.checked = true;
         });
 
-              /* LISTENER TIMER — ĐỒNG BỘ NHANH */
-        db.ref("timers/"+id).on("value", snap => {
-          const data = snap.val();
+      }
+    });
 
-          if (!data || !data.checked) {
-            checkbox.checked = false;
-            timerCell.textContent = "--";
-            timerCell.className = "timer";
-            if (timerCell.intervalId) clearInterval(timerCell.intervalId);
-            return;
-          }
+    /* Khôi phục màu từ Firebase */
+    db.ref("colors").on("value", snapshot => {
+      const colors = snapshot.val() || {};
 
-          checkbox.checked = true;
+      Object.keys(colors).forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.classList.add("right-clicked");
+      });
+    });
 
-          if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+    /* Countdown */
+    let timersData = {};
+    db.ref("timers").on("value", snapshot => {
+      timersData = snapshot.val() || {};
 
+      Object.keys(timersData).forEach(id => {
+        const {checked, startTime} = timersData[id];
+        const timerCell = document.getElementById("t_"+id);
+        const checkbox = document.getElementById(id);
+
+        if (!timerCell || !checkbox) return;
+        checkbox.checked = checked;
+
+        if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+
+        if (checked) {
           timerCell.intervalId = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
-            const remain = 240 * 60 - elapsed;
+            const elapsed = Math.floor((Date.now()-startTime)/1000);
+            const remain = 240*60 - elapsed;
 
             if (remain <= 0) {
               timerCell.textContent = "_SoS_";
               timerCell.className = "timer red";
-              try { alertSound.play(); } catch(e){}
+              try { document.getElementById("alertSound").play(); } catch(e){}
               clearInterval(timerCell.intervalId);
               return;
             }
@@ -417,72 +480,48 @@
             else if (remain > 3*60) timerCell.classList.add("yellow");
             else timerCell.classList.add("red");
 
-          }, 1000);
-        });
-
-        /* LISTENER MÀU VÀNG — ĐỒNG BỘ NHANH */
-        db.ref("colors/"+id).on("value", snap => {
-          const data = snap.val();
-          if (data && data.marked) {
-            checkbox.classList.add("right-clicked");
-          } else {
-            checkbox.classList.remove("right-clicked");
-          }
-        });
-
-      }
+          },1000);
+        } else {
+          timerCell.textContent = "--";
+          timerCell.className = "timer";
+        }
+      });
     });
+        /* Notifications */
+    setInterval(() => {
+      let soonRespawn = [];
 
-    /* Notifications */
-let timersData = {};
+      Object.keys(timersData).forEach(id => {
+        const {checked, startTime} = timersData[id];
+        if (!checked) return;
 
-db.ref("timers").on("value", snapshot => {
-  timersData = snapshot.val() || {};
-});
+        const remainNow = 240*60 - Math.floor((Date.now()-startTime)/1000);
+        if (remainNow <= 0) return;
 
-setInterval(() => {
-  let soonRespawn = [];
+        const mm = String(Math.floor(remainNow / 60)).padStart(2,'0');
+        const ss = String(remainNow % 60).padStart(2,'0');
+        const [ch, boss] = id.split("_");
 
-  Object.keys(timersData).forEach(id => {
-    const data = timersData[id];
-    if (!data || !data.checked) return;
+        let color = remainNow >= 235*60 ? "blue"
+                  : remainNow > 5*60 ? "green"
+                  : remainNow > 3*60 ? "yellow"
+                  : "red";
 
-    const remainNow = 240*60 - Math.floor((Date.now() - data.startTime) / 1000);
-    if (remainNow <= 0) return;
+        soonRespawn.push({ch, boss, text:`${mm}:${ss}`, remain: remainNow, color});
+      });
 
-    const mm = String(Math.floor(remainNow / 60)).padStart(2,'0');
-    const ss = String(remainNow % 60).padStart(2,'0');  // ← dòng này đã sửa
+      soonRespawn.sort((a,b) => a.remain - b.remain);
 
-    const [ch, boss] = id.split("_");
+      notifications.innerHTML = "";
+      soonRespawn.slice(0,5).forEach(item => {
+        const div = document.createElement("div");
+        div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
+        div.className = item.color;
+        notifications.appendChild(div);
+      });
+    },1000);
 
-    let color =
-      remainNow >= 235*60 ? "blue" :
-      remainNow > 5*60   ? "green" :
-      remainNow > 3*60   ? "yellow" :
-                           "red";
-
-    soonRespawn.push({
-      ch,
-      boss,
-      text: `${mm}:${ss}`,
-      remain: remainNow,
-      color
-    });
-  });
-
-  soonRespawn.sort((a, b) => a.remain - b.remain);
-
-  notifications.innerHTML = "";
-  soonRespawn.slice(0, 5).forEach(item => {
-    const div = document.createElement("div");
-    div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
-    div.className = item.color;
-    notifications.appendChild(div);
-  });
-
-}, 1000);
-
-      </script>
+  </script>
 </body>
 </html>
 
