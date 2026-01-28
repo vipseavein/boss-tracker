@@ -468,30 +468,44 @@ function startTimer(id, startTime) {
 
   if (timerCell.intervalId) clearInterval(timerCell.intervalId);
 
-  timerCell.intervalId = setInterval(() => {
-    const elapsed = Math.floor((now() - startTime) / 1000);
+  let globalTimer = null;
 
-    const remain = 240 * 60 - elapsed;
+function startGlobalTimer() {
+  if (globalTimer) return;
 
-    if (remain <= 0) {
-      timerCell.textContent = "_SoS_";
-      timerCell.className = "timer red";
-      try { document.getElementById("alertSound").play(); } catch(e){}
-      clearInterval(timerCell.intervalId);
-      return;
-    }
+  globalTimer = setInterval(() => {
+    const currentTime = now();
 
-    const mm = String(Math.floor(remain / 60)).padStart(2,'0');
-    const ss = String(remain % 60).padStart(2,'0');
-    timerCell.textContent = `${mm}:${ss}`;
+    Object.entries(timersData).forEach(([id, data]) => {
+      if (!data.checked) return;
 
-    timerCell.className = "timer";
-    if (remain >= 235*60) timerCell.classList.add("blue");
-    else if (remain > 5*60) timerCell.classList.add("green");
-    else if (remain > 3*60) timerCell.classList.add("yellow");
-    else timerCell.classList.add("red");
+      const timerCell = document.getElementById("t_" + id);
+      if (!timerCell) return;
+
+      const elapsed = Math.floor((currentTime - data.startTime) / 1000);
+      const remain = 240 * 60 - elapsed;
+
+      if (remain <= 0) {
+        timerCell.textContent = "_SoS_";
+        timerCell.className = "timer red";
+        return;
+      }
+
+      const mm = String(Math.floor(remain / 60)).padStart(2, "0");
+      const ss = String(remain % 60).padStart(2, "0");
+      timerCell.textContent = `${mm}:${ss}`;
+
+      timerCell.className = "timer";
+      if (remain >= 235*60) timerCell.classList.add("blue");
+      else if (remain > 5*60) timerCell.classList.add("green");
+      else if (remain > 3*60) timerCell.classList.add("yellow");
+      else timerCell.classList.add("red");
+    });
+
+    updateNotifications(currentTime);
   }, 1000);
 }
+
 
 function stopTimer(id) {
   const timerCell = document.getElementById("t_" + id);
@@ -562,6 +576,7 @@ db.ref("timers").on("child_removed", snap => {
   </script>
 </body>
 </html>
+
 
 
 
