@@ -1,83 +1,57 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Boss Tracker - Cabal Online Ultimate Combo (SEA)</title>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <meta charset="UTF-8" />
+  <title>Boss Tracker - Cabal Ultimate Combo (SEA)</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
-      padding: 20px;
-      transition: 0.3s;
-    }
+    body {font-family: Arial, sans-serif; background:#0d1117; color:#e6edf3; padding:20px; transition:.3s}
+    h2 {text-align:center; color:#58a6ff; text-shadow:0 0 10px #58a6ff; font-size:28px; margin-bottom:20px}
 
-    h2 {
-      text-align: center;
-      color: #58a6ff;
-      text-shadow: 0 0 10px #58a6ff;
-      font-size: 28px;
-      margin-bottom: 20px;
-    }
+    table {width:100%; border-collapse:collapse; table-layout:fixed; background:rgba(255,255,255,.03); border-radius:10px; overflow:hidden; box-shadow:0 0 15px rgba(88,166,255,.3)}
+    th,td {border:1px solid rgba(88,166,255,.2); padding:4px; text-align:center; white-space:nowrap}
+    th {background:rgba(88,166,255,.15); color:#58a6ff; font-weight:bold}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      background: rgba(255,255,255,0.03);
-    }
+    #bossTable tr:nth-child(odd){background:rgba(88,166,255,.05)}
+    #bossTable tr:nth-child(even){background:rgba(88,166,255,.1)}
 
-    th, td {
-      border: 1px solid rgba(88,166,255,0.2);
-      padding: 4px;
-      text-align: center;
-      color: #c9d1d9;
-      white-space: nowrap;
-    }
+    input[type=checkbox]{transform:scale(1.5); cursor:pointer; accent-color:#58a6ff}
 
-    th {
-      background: rgba(88,166,255,0.15);
-      color: #58a6ff;
-    }
+    .timer{font-weight:bold; display:inline-block; min-width:50px; padding:2px 6px; border-radius:4px}
+    .blue{background:#0077ff;color:#fff}
+    .green{background:#00cc44;color:#000}
+    .yellow{background:#ffcc00;color:#000}
+    .red{background:#ff0033;color:#fff}
 
-    input[type="checkbox"] {
-      transform: scale(1.5);
-      cursor: pointer;
-      accent-color: #58a6ff;
-    }
+    .right-clicked{outline:3px solid #ffeb3b; box-shadow:0 0 10px #ffeb3b}
 
-    .right-clicked {
-      outline: 3px solid #ffeb3b;
-      box-shadow: 0 0 10px #ffeb3b;
-      border-radius: 4px;
-    }
+    #columnSelector{margin-top:20px; padding:10px; background:rgba(255,255,255,.05); border-radius:6px}
+    #columnSelector label{margin-right:12px; cursor:pointer}
 
-    .timer {
-      font-weight: bold;
-      display: inline-block;
-      min-width: 55px;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
+    #themeToggle,#logButton{position:fixed; right:20px; padding:6px 12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer}
+    #themeToggle{bottom:20px; background:#58a6ff; color:#fff}
+    #logButton{bottom:60px; background:#ff9800; color:#fff}
 
-    .blue { color: #58a6ff; }
-    .green { color: #3fb950; }
-    .yellow { color: #d29922; }
-    .red { color: #f85149; }
+    body.light{background:#f2f2f2; color:#222}
+    body.light table{background:#fff}
+    body.light th{background:#d0e4ff; color:#003366}
+    body.light td{color:#222}
   </style>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
-
 <body>
-<h2>Boss Tracker - Cabal Online (SEA)</h2>
-<table id="bossTable"></table>
-<audio id="alertSound" src="alert.mp3" preload="auto"></audio>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+<h2>Boss Tracker - Cabal Ultimate Combo (SEA)</h2>
+<table id="bossTable"></table>
+<div id="columnSelector"></div>
+<button id="themeToggle">Light Mode</button>
+<button id="logButton">LOG</button>
 
 <script>
-/* ================= FIREBASE INIT ================= */
+/* ================= FIREBASE ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
   authDomain: "boss-tracker-9e069.firebaseapp.com",
@@ -90,84 +64,103 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-/* ================= SERVER TIME ================= */
+/* ============ SERVER TIME SYNC ============ */
 let serverOffset = 0;
-db.ref(".info/serverTimeOffset").on("value", snap => {
-  serverOffset = snap.val() || 0;
-});
-function now() {
-  return Date.now() + serverOffset;
+db.ref('.info/serverTimeOffset').on('value', s => serverOffset = s.val() || 0);
+const now = () => Date.now() + serverOffset;
+
+/* ================= DATA ================= */
+const bosses = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
+const CHANNELS = 30;
+const RESPAWN_SEC = 240 * 60;
+
+const table = document.getElementById('bossTable');
+
+/* ================= BUILD TABLE ================= */
+let html = '<tr><th>CH</th>';
+bosses.forEach(b => html += `<th>${b}</th>`);
+html += '</tr>';
+
+for(let ch=1; ch<=CHANNELS; ch++){
+  html += `<tr><th>${ch}</th>`;
+  bosses.forEach(boss => {
+    const id = `${ch}_${boss}`;
+    html += `<td>
+      <input type="checkbox" id="${id}">
+      <span class="timer" id="t_${id}">--</span>
+    </td>`;
+  });
+  html += '</tr>';
 }
 
-/* ================= DATA STORE ================= */
-let timersData = {};
+table.innerHTML = html;
 
-/* ================= CHECKBOX EVENT ================= */
-document.addEventListener("change", e => {
-  if (!e.target.matches("input[type='checkbox']")) return;
-  const id = e.target.id;
+/* ================= COLUMN TOGGLE ================= */
+const colSel = document.getElementById('columnSelector');
+bosses.forEach((b,i)=>{
+  colSel.innerHTML += `<label><input type="checkbox" checked data-col="${i+1}"> ${b}</label>`;
+});
 
-  if (e.target.checked) {
-    db.ref("timers/" + id).set({
-      checked: true,
-      startTime: now()
+colSel.addEventListener('change', e=>{
+  if(!e.target.dataset.col) return;
+  const col = +e.target.dataset.col;
+  [...table.rows].forEach(r=> r.cells[col].style.display = e.target.checked ? '' : 'none');
+});
+
+/* ================= EVENTS ================= */
+bosses.forEach(boss=>{
+  for(let ch=1; ch<=CHANNELS; ch++){
+    const id = `${ch}_${boss}`;
+    const cb = document.getElementById(id);
+    const cell = document.getElementById('t_'+id);
+
+    cb.addEventListener('change',()=>{
+      if(cb.checked){
+        db.ref('timers/'+id).set({start: now()});
+      }else{
+        db.ref('timers/'+id).remove();
+        cell.textContent='--'; cell.className='timer';
+      }
     });
-  } else {
-    db.ref("timers/" + id).remove();
+
+    cb.addEventListener('contextmenu',e=>{
+      e.preventDefault(); cb.classList.toggle('right-clicked');
+    });
+
+    cell.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      const m = parseInt(prompt('Nhập số phút còn lại'));
+      if(!m||m<=0) return;
+      const start = now() - (RESPAWN_SEC - m*60)*1000;
+      db.ref('timers/'+id).set({start}); cb.checked=true;
+    });
   }
 });
 
-/* ================= FIREBASE SYNC ================= */
-db.ref("timers").on("child_added", snap => {
-  timersData[snap.key] = snap.val();
-});
-
-db.ref("timers").on("child_changed", snap => {
-  timersData[snap.key] = snap.val();
-});
-
-db.ref("timers").on("child_removed", snap => {
-  delete timersData[snap.key];
-  const t = document.getElementById("t_" + snap.key);
-  const c = document.getElementById(snap.key);
-  if (t) { t.textContent = "--"; t.className = "timer"; }
-  if (c) c.checked = false;
-});
-
 /* ================= GLOBAL TICKER ================= */
-setInterval(() => {
-  const current = now();
-
-  Object.keys(timersData).forEach(id => {
-    const data = timersData[id];
-    if (!data || !data.checked) return;
-
-    const timerCell = document.getElementById("t_" + id);
-    const checkbox = document.getElementById(id);
-    if (!timerCell || !checkbox) return;
-
-    checkbox.checked = true;
-
-    const remain = 240*60 - Math.floor((current - data.startTime)/1000);
-
-    if (remain <= 0) {
-      timerCell.textContent = "_SoS_";
-      timerCell.className = "timer red";
-      try { document.getElementById("alertSound").play(); } catch(e){}
-      return;
-    }
-
-    const mm = String(Math.floor(remain/60)).padStart(2,"0");
-    const ss = String(remain%60).padStart(2,"0");
-    timerCell.textContent = mm + ":" + ss;
-
-    timerCell.className = "timer";
-    if (remain >= 235*60) timerCell.classList.add("blue");
-    else if (remain > 5*60) timerCell.classList.add("green");
-    else if (remain > 3*60) timerCell.classList.add("yellow");
-    else timerCell.classList.add("red");
+setInterval(()=>{
+  db.ref('timers').once('value').then(snap=>{
+    const data = snap.val()||{};
+    Object.keys(data).forEach(id=>{
+      const t = document.getElementById('t_'+id);
+      if(!t) return;
+      const left = RESPAWN_SEC - Math.floor((now()-data[id].start)/1000);
+      if(left<=0){ t.textContent='READY'; t.className='timer red'; return; }
+      const m = Math.floor(left/60);
+      t.textContent = m+'m';
+      t.className = 'timer ' + (m<=1?'red':m<=3?'yellow':m<=5?'green':'blue');
+    });
   });
-}, 1000);
+},1000);
+
+/* ================= THEME ================= */
+const themeBtn = document.getElementById('themeToggle');
+const applyTheme = m=>{document.body.classList.toggle('light',m==='light'); themeBtn.textContent = m==='light'?'Dark Mode':'Light Mode'};
+let theme = localStorage.getItem('theme')||'dark'; applyTheme(theme);
+
+themeBtn.onclick=()=>{theme = theme==='dark'?'light':'dark'; localStorage.setItem('theme',theme); applyTheme(theme)};
+
+document.getElementById('logButton').onclick=()=>location.href='log.html';
 </script>
 </body>
 </html>
