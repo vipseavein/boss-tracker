@@ -67,6 +67,7 @@
       vertical-align: middle;
     }
 
+    /* MÀU VÀNG KHI CHUỘT PHẢI */
     .right-clicked {
       outline: 3px solid #ffeb3b !important;
       box-shadow: 0 0 10px #ffeb3b;
@@ -175,6 +176,11 @@
       z-index: 999;
     }
 
+    body.light #themeToggle {
+      background: #003366;
+      color: white;
+    }
+
     #logButton {
       padding: 6px 12px;
       background: #ff9800;
@@ -191,6 +197,10 @@
       right: 20px;
       bottom: 60px;
       z-index: 999;
+    }
+
+    body.light #logButton {
+      background: #cc7a00;
     }
 
     #columnSelector {
@@ -327,7 +337,6 @@
     document.querySelectorAll(".colToggle").forEach(cb => {
       toggleColumn(parseInt(cb.dataset.col), cb.checked);
     });
-
     /* Highlight */
     table.addEventListener("mousemove", function(e) {
       const cell = e.target.closest("td,th");
@@ -361,13 +370,8 @@
 
         /* Chuột trái checkbox */
         checkbox.addEventListener("change", e => {
-
           if (e.target.checked) {
-
-            db.ref("timers/"+id).set({
-              checked: true,
-              startTime: Date.now()
-            });
+            db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
 
             db.ref("logs").push({
               id: id,
@@ -376,12 +380,7 @@
             });
 
           } else {
-
-            db.ref("timers/"+id).set({
-              checked: false,
-              startTime: null
-            });
-
+            db.ref("timers/"+id).remove();
             if (timerCell.intervalId) clearInterval(timerCell.intervalId);
             timerCell.textContent = "--";
             timerCell.className = "timer";
@@ -402,10 +401,10 @@
 
           if (checkbox.classList.contains("right-clicked")) {
             checkbox.classList.remove("right-clicked");
-            colorRef.set({ marked: false });
+            colorRef.remove();
           } else {
             checkbox.classList.add("right-clicked");
-            colorRef.set({ marked: true });
+            colorRef.set(true);
           }
         });
 
@@ -426,38 +425,47 @@
           const remainSeconds = minutesInput * 60;
           const newStart = Date.now() - (totalSeconds - remainSeconds) * 1000;
 
-          db.ref("timers/" + id).set({
-            checked: true,
-            startTime: newStart
-          });
-
+          db.ref("timers/" + id).set({ checked: true, startTime: newStart });
           checkbox.checked = true;
         });
 
-        /* LISTENER RIÊNG CHO TỪNG ID — KHÔNG DÙNG on("value") TOÀN BẢNG */
-        db.ref("timers/"+id).on("value", snap => {
-          const data = snap.val();
+      }
+    });
 
-          if (!data || !data.checked) {
-            checkbox.checked = false;
-            timerCell.textContent = "--";
-            timerCell.className = "timer";
-            if (timerCell.intervalId) clearInterval(timerCell.intervalId);
-            return;
-          }
+    /* Khôi phục màu từ Firebase */
+    db.ref("colors").on("value", snapshot => {
+      const colors = snapshot.val() || {};
 
-          checkbox.checked = true;
+      Object.keys(colors).forEach(id => {
+        const checkbox = document.getElementById(id);
+        if (checkbox) checkbox.classList.add("right-clicked");
+      });
+    });
 
-          if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+    /* Countdown */
+    let timersData = {};
+    db.ref("timers").on("value", snapshot => {
+      timersData = snapshot.val() || {};
 
+      Object.keys(timersData).forEach(id => {
+        const {checked, startTime} = timersData[id];
+        const timerCell = document.getElementById("t_"+id);
+        const checkbox = document.getElementById(id);
+
+        if (!timerCell || !checkbox) return;
+        checkbox.checked = checked;
+
+        if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+
+        if (checked) {
           timerCell.intervalId = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - data.startTime) / 1000);
-            const remain = 240 * 60 - elapsed;
+            const elapsed = Math.floor((Date.now()-startTime)/1000);
+            const remain = 240*60 - elapsed;
 
             if (remain <= 0) {
               timerCell.textContent = "_SoS_";
               timerCell.className = "timer red";
-              try { alertSound.play(); } catch(e){}
+              try { document.getElementById("alertSound").play(); } catch(e){}
               clearInterval(timerCell.intervalId);
               return;
             }
@@ -472,64 +480,48 @@
             else if (remain > 3*60) timerCell.classList.add("yellow");
             else timerCell.classList.add("red");
 
-          }, 1000);
-        });
-
-        /* LISTENER CHO MÀU VÀNG */
-        db.ref("colors/"+id).on("value", snap => {
-          const data = snap.val();
-          if (data && data.marked) {
-            checkbox.classList.add("right-clicked");
-          } else {
-            checkbox.classList.remove("right-clicked");
-          }
-        });
-
-      }
+          },1000);
+        } else {
+          timerCell.textContent = "--";
+          timerCell.className = "timer";
+        }
+      });
     });
-
-    /* Notifications */
+        /* Notifications */
     setInterval(() => {
       let soonRespawn = [];
 
       Object.keys(timersData).forEach(id => {
-        const data = timersData[id];
-        if (!data || !data.checked) return;
+        const {checked, startTime} = timersData[id];
+        if (!checked) return;
 
-        const remainNow = 240*60 - Math.floor((Date.now() - data.startTime) / 1000);
+        const remainNow = 240*60 - Math.floor((Date.now()-startTime)/1000);
         if (remainNow <= 0) return;
 
         const mm = String(Math.floor(remainNow / 60)).padStart(2,'0');
         const ss = String(remainNow % 60).padStart(2,'0');
         const [ch, boss] = id.split("_");
 
-        let color =
-          remainNow >= 235*60 ? "blue" :
-          remainNow > 5*60   ? "green" :
-          remainNow > 3*60   ? "yellow" :
-                               "red";
+        let color = remainNow >= 235*60 ? "blue"
+                  : remainNow > 5*60 ? "green"
+                  : remainNow > 3*60 ? "yellow"
+                  : "red";
 
-        soonRespawn.push({
-          ch,
-          boss,
-          text: `${mm}:${ss}`,
-          remain: remainNow,
-          color
-        });
+        soonRespawn.push({ch, boss, text:`${mm}:${ss}`, remain: remainNow, color});
       });
 
-      soonRespawn.sort((a, b) => a.remain - b.remain);
+      soonRespawn.sort((a,b) => a.remain - b.remain);
 
       notifications.innerHTML = "";
-      soonRespawn.slice(0, 5).forEach(item => {
+      soonRespawn.slice(0,5).forEach(item => {
         const div = document.createElement("div");
         div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${item.text}`;
         div.className = item.color;
         notifications.appendChild(div);
       });
-
-    }, 1000);
+    },1000);
 
   </script>
 </body>
 </html>
+
