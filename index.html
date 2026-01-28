@@ -447,59 +447,73 @@
 
 
     /* Countdown */
-    let timersData = {};
-    db.ref("timers").on("value", snapshot => {
-  timersData = snapshot.val() || {};
+   /* Countdown FIX – KHÔNG RESET UI */
+let timersData = {};
 
-  // 🔴 RESET TOÀN BỘ TIMER TRƯỚC
-  document.querySelectorAll(".timer").forEach(timer => {
-    if (timer.intervalId) {
-      clearInterval(timer.intervalId);
-      timer.intervalId = null;
+function startTimer(id, startTime) {
+  const timerCell = document.getElementById("t_" + id);
+  const checkbox = document.getElementById(id);
+  if (!timerCell || !checkbox) return;
+
+  checkbox.checked = true;
+
+  if (timerCell.intervalId) clearInterval(timerCell.intervalId);
+
+  timerCell.intervalId = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const remain = 240 * 60 - elapsed;
+
+    if (remain <= 0) {
+      timerCell.textContent = "_SoS_";
+      timerCell.className = "timer red";
+      try { document.getElementById("alertSound").play(); } catch(e){}
+      clearInterval(timerCell.intervalId);
+      return;
     }
-    timer.textContent = "--";
-    timer.className = "timer";
-  });
 
-  document.querySelectorAll("input[type='checkbox']").forEach(cb => {
-    cb.checked = false;
-  });
+    const mm = String(Math.floor(remain / 60)).padStart(2,'0');
+    const ss = String(remain % 60).padStart(2,'0');
+    timerCell.textContent = `${mm}:${ss}`;
 
-  // 🟢 APPLY LẠI TIMER CÒN TỒN TẠI
-  Object.keys(timersData).forEach(id => {
-    const { checked, startTime } = timersData[id];
-    const timerCell = document.getElementById("t_" + id);
-    const checkbox = document.getElementById(id);
+    timerCell.className = "timer";
+    if (remain >= 235*60) timerCell.classList.add("blue");
+    else if (remain > 5*60) timerCell.classList.add("green");
+    else if (remain > 3*60) timerCell.classList.add("yellow");
+    else timerCell.classList.add("red");
+  }, 1000);
+}
 
-    if (!timerCell || !checkbox || !checked) return;
+function stopTimer(id) {
+  const timerCell = document.getElementById("t_" + id);
+  const checkbox = document.getElementById(id);
+  if (!timerCell || !checkbox) return;
 
-    checkbox.checked = true;
+  if (timerCell.intervalId) {
+    clearInterval(timerCell.intervalId);
+    timerCell.intervalId = null;
+  }
 
-    timerCell.intervalId = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remain = 240 * 60 - elapsed;
+  timerCell.textContent = "--";
+  timerCell.className = "timer";
+  checkbox.checked = false;
+}
 
-      if (remain <= 0) {
-        timerCell.textContent = "_SoS_";
-        timerCell.className = "timer red";
-        try { document.getElementById("alertSound").play(); } catch(e){}
-        clearInterval(timerCell.intervalId);
-        return;
-      }
-
-      const mm = String(Math.floor(remain / 60)).padStart(2, "0");
-      const ss = String(remain % 60).padStart(2, "0");
-      timerCell.textContent = `${mm}:${ss}`;
-
-      timerCell.className = "timer";
-      if (remain >= 235*60) timerCell.classList.add("blue");
-      else if (remain > 5*60) timerCell.classList.add("green");
-      else if (remain > 3*60) timerCell.classList.add("yellow");
-      else timerCell.classList.add("red");
-
-    }, 1000);
-  });
+/* Firebase sync */
+db.ref("timers").on("child_added", snap => {
+  timersData[snap.key] = snap.val();
+  if (snap.val().checked) startTimer(snap.key, snap.val().startTime);
 });
+
+db.ref("timers").on("child_changed", snap => {
+  timersData[snap.key] = snap.val();
+  if (snap.val().checked) startTimer(snap.key, snap.val().startTime);
+});
+
+db.ref("timers").on("child_removed", snap => {
+  delete timersData[snap.key];
+  stopTimer(snap.key);
+});
+
 
         /* Notifications */
     setInterval(() => {
@@ -538,6 +552,7 @@
   </script>
 </body>
 </html>
+
 
 
 
