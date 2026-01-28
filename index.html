@@ -275,6 +275,14 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    // ===== SERVER TIME SYNC =====
+let serverOffset = 0;
+db.ref(".info/serverTimeOffset").on("value", snap => {
+  serverOffset = snap.val() || 0;
+});
+function now() {
+  return Date.now() + serverOffset;
+}
 
     const bosses = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
     const table = document.getElementById("bossTable");
@@ -371,7 +379,8 @@
         /* Chuột trái checkbox */
         checkbox.addEventListener("change", e => {
           if (e.target.checked) {
-            db.ref("timers/"+id).set({checked:true, startTime: Date.now()});
+            db.ref("timers/"+id).set({checked:true, startTime: now()
+});
 
             db.ref("logs").push({
               id: id,
@@ -460,7 +469,8 @@ function startTimer(id, startTime) {
   if (timerCell.intervalId) clearInterval(timerCell.intervalId);
 
   timerCell.intervalId = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const elapsed = Math.floor((now() - startTime) / 1000);
+
     const remain = 240 * 60 - elapsed;
 
     if (remain <= 0) {
@@ -552,6 +562,7 @@ db.ref("timers").on("child_removed", snap => {
   </script>
 </body>
 </html>
+
 
 
 
