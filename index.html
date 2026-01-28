@@ -380,33 +380,30 @@
             });
 
           } else {
-            db.ref("timers/"+id).remove();
-            if (timerCell.intervalId) clearInterval(timerCell.intervalId);
-            timerCell.textContent = "--";
-            timerCell.className = "timer";
+  db.ref("timers/"+id).remove();
 
-            db.ref("logs").push({
-              id: id,
-              action: "uncheck",
-              time: Date.now()
-            });
-          }
+  db.ref("logs").push({
+    id: id,
+    action: "uncheck",
+    time: Date.now()
+  });
+}
         });
 
         /* Chuột phải checkbox → đổi màu vàng + lưu Firebase */
         checkbox.addEventListener("contextmenu", e => {
-          e.preventDefault();
+  e.preventDefault();
+  const colorRef = db.ref("colors/" + id);
 
-          const colorRef = db.ref("colors/" + id);
+  colorRef.once("value").then(snap => {
+    if (snap.exists()) {
+      colorRef.remove();
+    } else {
+      colorRef.set(true);
+    }
+  });
+});
 
-          if (checkbox.classList.contains("right-clicked")) {
-            checkbox.classList.remove("right-clicked");
-            colorRef.remove();
-          } else {
-            checkbox.classList.add("right-clicked");
-            colorRef.set(true);
-          }
-        });
 
         /* Chuột phải timer → nhập số phút */
         timerCell.addEventListener("contextmenu", e => {
@@ -434,13 +431,20 @@
 
     /* Khôi phục màu từ Firebase */
     db.ref("colors").on("value", snapshot => {
-      const colors = snapshot.val() || {};
+  const colors = snapshot.val() || {};
 
-      Object.keys(colors).forEach(id => {
-        const checkbox = document.getElementById(id);
-        if (checkbox) checkbox.classList.add("right-clicked");
-      });
-    });
+  // reset toàn bộ trước
+  document
+    .querySelectorAll("input[type='checkbox']")
+    .forEach(cb => cb.classList.remove("right-clicked"));
+
+  // apply lại theo Firebase
+  Object.keys(colors).forEach(id => {
+    const checkbox = document.getElementById(id);
+    if (checkbox) checkbox.classList.add("right-clicked");
+  });
+});
+
 
     /* Countdown */
     let timersData = {};
@@ -524,4 +528,5 @@
   </script>
 </body>
 </html>
+
 
