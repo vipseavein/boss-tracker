@@ -217,6 +217,25 @@
       margin-right: 12px;
       cursor: pointer;
     }
+    .gm-popup {
+  position: absolute;
+  z-index: 9999;
+  cursor: pointer;
+  animation: gmPulse 1.5s infinite;
+}
+
+.gm-popup img {
+  width: 26px;
+  height: 26px;
+}
+
+@keyframes gmPulse {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.15); opacity: 0.85; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+    
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -332,6 +351,34 @@ table.addEventListener("mouseleave", () => {
 let timersData = {};
 let globalTick = null;
 
+ function showGMBuffPopup(timerCell) {
+  if (timerCell.dataset.gmShown) return;
+  timerCell.dataset.gmShown = "1";
+
+  const popup = document.createElement("div");
+  popup.className = "gm-popup";
+
+  const img = document.createElement("img");
+  img.src = "BuffGM.png";
+  img.alt = "GM Buff";
+
+  popup.appendChild(img);
+  document.body.appendChild(popup);
+
+  timerCell._gmPopup = popup;
+
+  const removePopup = () => {
+    popup.remove();
+    delete timerCell._gmPopup;
+  };
+
+  popup.addEventListener("click", removePopup);
+
+  setTimeout(removePopup, 120000); // 2 phút
+}
+ 
+
+  
 function ensureGlobalTick() {
   if (globalTick) return;
   globalTick = setInterval(() => {
@@ -344,11 +391,26 @@ function ensureGlobalTick() {
         cell.className = "timer red";
         if (!cell.dataset.done) {
           cell.dataset.done = "1";
+          showGMBuffPopup(cell);
           try { document.getElementById("alertSound").play(); } catch(e){}
         }
+
+          // ===== GM BUFF POPUP BÁM THEO CELL =====
+    if (cell._gmPopup) {
+      const rect = cell.getBoundingClientRect();
+      cell._gmPopup.style.left =
+        rect.right + 6 + window.scrollX + "px";
+      cell._gmPopup.style.top =
+        rect.top + window.scrollY + "px";
+    }
+
+        
         return;
       }
 
+      
+
+      
       cell.textContent =
         String(Math.floor(remain/60)).padStart(2,'0') + ":" +
         String(remain%60).padStart(2,'0');
@@ -488,6 +550,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
