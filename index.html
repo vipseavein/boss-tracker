@@ -6,32 +6,217 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <style>
     /* ===== XIN CHÀO CABAL-ER ===== */
+    /*!
+ * Boss Tracker – Private Project - seavein@gmail.com
+ * Unauthorized copying or modification is prohibited.
+ */
+    
     body {
       font-family: Arial, sans-serif;
       background: #0d1117;
       color: #e6edf3;
       padding: 20px;
+      transition: 0.3s;
     }
-    h2 { text-align: center; color: #58a6ff; }
-    table { width: 100%; border-collapse: collapse; }
+
+    h2 {
+      text-align: center;
+      color: #58a6ff;
+      text-shadow: 0 0 10px #58a6ff;
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(88, 166, 255, 0.3);
+      transition: 0.3s;
+    }
+
     th, td {
-      border: 1px solid rgba(88,166,255,.2);
+      border: 1px solid rgba(88, 166, 255, 0.2);
       padding: 4px;
       text-align: center;
+      color: #c9d1d9;
+      white-space: nowrap;
+      transition: 0.3s;
+    }
+
+    th.channel-col, td.channel-col {
+      width: calc(100% / 26);
       white-space: nowrap;
     }
+
+    th {
+      background: rgba(88, 166, 255, 0.15);
+      color: #58a6ff;
+      font-weight: bold;
+      text-shadow: 0 0 5px #58a6ff;
+    }
+
+    #bossTable tr:nth-child(odd) {
+      background-color: rgba(88, 166, 255, 0.05) !important;
+    }
+    #bossTable tr:nth-child(even) {
+      background-color: rgba(88, 166, 255, 0.1) !important;
+    }
+
+    input[type="checkbox"] {
+      transform: scale(1.5);
+      cursor: pointer;
+      accent-color: #58a6ff;
+      vertical-align: middle;
+    }
+
+    .right-clicked {
+      outline: 3px solid #ffeb3b !important;
+      box-shadow: 0 0 10px #ffeb3b;
+      border-radius: 4px;
+    }
+
     .timer {
       font-weight: bold;
+      text-shadow: 0 0 8px rgba(255,255,255,0.5);
       display: inline-block;
       margin-left: 6px;
       padding: 2px 6px;
       border-radius: 4px;
       min-width: 50px;
+      vertical-align: middle;
     }
-    .blue{background:#0077ff;color:#fff}
-    .green{background:#00cc44;color:#000}
-    .yellow{background:#ffcc00;color:#000}
-    .red{background:#ff0033;color:#fff}
+
+    .blue { background-color: #0077ff !important; color: white; }
+    .green { background-color: #00cc44 !important; color: black; }
+    .yellow { background-color: #ffcc00 !important; color: black; }
+    .red { background-color: #ff0033 !important; color: white; }
+
+    #notifications {
+      margin-top: 25px;
+      text-align: center;
+      position: relative;
+    }
+
+    #notifications div {
+      width: 60%;
+      margin: 8px auto;
+      padding: 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      color: black;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+      position: relative;
+    }
+
+    .highlight-row td {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+    }
+    .highlight-col {
+      background-color: rgba(255, 255, 255, 0.12) !important;
+    }
+
+    body.light {
+      background: #f2f2f2;
+      color: #222;
+    }
+
+    body.light table {
+      background: white;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
+
+    body.light th {
+      background: #d0e4ff;
+      color: #003366;
+      text-shadow: none;
+    }
+
+    body.light td {
+      color: #222;
+      border-color: #aac4e6;
+    }
+
+    body.light #bossTable tr:nth-child(odd) {
+      background-color: #f7fbff !important;
+    }
+    body.light #bossTable tr:nth-child(even) {
+      background-color: #eaf4ff !important;
+    }
+
+    body.light .timer {
+      text-shadow: none;
+    }
+
+    body.light #notifications div {
+      color: black;
+      box-shadow: 0 0 10px rgba(0,0,0,0.15);
+    }
+
+    body.light .highlight-row td {
+      background-color: rgba(0, 0, 0, 0.05) !important;
+    }
+    body.light .highlight-col {
+      background-color: rgba(0, 0, 0, 0.08) !important;
+    }
+
+    #themeToggle {
+      padding: 6px 12px;
+      background: #58a6ff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(88,166,255,0.4);
+      transition: 0.3s;
+      font-size: 13px;
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 999;
+    }
+
+    body.light #themeToggle {
+      background: #003366;
+      color: white;
+    }
+
+    #logButton {
+      padding: 6px 12px;
+      background: #ff9800;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255,152,0,0.4);
+      transition: 0.3s;
+      font-size: 13px;
+      position: fixed;
+      right: 20px;
+      bottom: 60px;
+      z-index: 999;
+    }
+
+    body.light #logButton {
+      background: #cc7a00;
+    }
+
+    #columnSelector {
+      margin-top: 20px;
+      padding: 10px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(88,166,255,0.3);
+    }
+    #columnSelector label {
+      margin-right: 12px;
+      cursor: pointer;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -41,14 +226,35 @@
 <body>
 
 <audio id="alertSound">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
 </audio>
 
 <h2>Boss Tracker - Cabal Ultimate Combo (SEA)</h2>
 <table id="bossTable"></table>
 <div id="notifications"></div>
 
+<button id="themeToggle">Light Mode</button>
+<button id="logButton">LOG</button>
+<div id="columnSelector"></div>
+
 <script>
+/* ====== PHẦN JS + TỐI ƯU NHẸ ====== */
+
+/* ---------- THEME ---------- */
+const themeToggle = document.getElementById("themeToggle");
+function applyTheme(mode) {
+  document.body.classList.toggle("light", mode === "light");
+  themeToggle.textContent = mode === "light" ? "Dark Mode" : "Light Mode";
+}
+const savedTheme = localStorage.getItem("themeMode") || "dark";
+applyTheme(savedTheme);
+themeToggle.onclick = () => {
+  const m = document.body.classList.contains("light") ? "dark" : "light";
+  applyTheme(m);
+  localStorage.setItem("themeMode", m);
+};
+document.getElementById("logButton").onclick = () => location.href = "log.html";
+
 /* ---------- FIREBASE ---------- */
 firebase.initializeApp({
   apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
@@ -59,135 +265,231 @@ const db = firebase.database();
 /* ---------- SERVER TIME ---------- */
 let serverOffset = 0;
 db.ref(".info/serverTimeOffset").on("value", s => serverOffset = s.val() || 0);
-function now(){ return Date.now() + serverOffset; }
+function now() { return Date.now() + serverOffset; }
 
 /* ---------- DATA ---------- */
-const bosses=["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
-const table=document.getElementById("bossTable");
+const bosses = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
+const table = document.getElementById("bossTable");
+const notifications = document.getElementById("notifications");
+const columnSelector = document.getElementById("columnSelector");
+
+/* ---------- COLUMN SELECT ---------- */
+bosses.forEach((boss, i) => {
+  columnSelector.innerHTML += `<label><input type="checkbox" class="colToggle" data-col="${i+1}" checked> ${boss}</label>`;
+});
+const savedCols = JSON.parse(localStorage.getItem("columnVisibility") || "{}");
+document.querySelectorAll(".colToggle").forEach(cb => {
+  if (savedCols[cb.dataset.col] !== undefined) cb.checked = savedCols[cb.dataset.col];
+});
+function toggleColumn(i, show) {
+  [...table.rows].forEach(r => r.cells[i] && (r.cells[i].style.display = show ? "" : "none"));
+}
+document.addEventListener("change", e => {
+  if (!e.target.classList.contains("colToggle")) return;
+  toggleColumn(+e.target.dataset.col, e.target.checked);
+  const save = {};
+  document.querySelectorAll(".colToggle").forEach(cb => save[cb.dataset.col] = cb.checked);
+  localStorage.setItem("columnVisibility", JSON.stringify(save));
+});
 
 /* ---------- TABLE ---------- */
-let header="<tr><th>Channel</th>";
-bosses.forEach(b=>header+=`<th>${b}</th>`);
-header+="</tr>";
-table.innerHTML=header;
+let header = "<tr><th class='channel-col'>Channel</th>";
+bosses.forEach(b => header += `<th>${b}</th>`);
+header += "</tr>";
+table.innerHTML = header;
 
-for(let ch=1;ch<=30;ch++){
-  let r=`<tr><td>${ch}</td>`;
-  bosses.forEach(b=>{
-    const id=`${ch}_${b}`;
-    r+=`<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
+for (let ch = 1; ch <= 30; ch++) {
+  let row = `<tr><td class="channel-col">${ch}</td>`;
+  bosses.forEach(b => {
+    const id = `${ch}_${b}`;
+    row += `<td><input type="checkbox" id="${id}"><div class="timer" id="t_${id}">--</div></td>`;
   });
-  r+="</tr>";
-  table.insertAdjacentHTML("beforeend",r);
+  row += "</tr>";
+  table.insertAdjacentHTML("beforeend", row);
 }
+document.querySelectorAll(".colToggle").forEach(cb => toggleColumn(+cb.dataset.col, cb.checked));
 
-/* ---------- TIMER ---------- */
+/* ---------- HIGHLIGHT (TỐI ƯU) ---------- */
+let lastCell = null;
+table.addEventListener("mouseover", e => {
+  const cell = e.target.closest("td,th");
+  if (!cell || cell === lastCell) return;
+  lastCell = cell;
+
+  table.querySelectorAll(".highlight-row").forEach(r => r.classList.remove("highlight-row"));
+  table.querySelectorAll(".highlight-col").forEach(c => c.classList.remove("highlight-col"));
+
+  const col = cell.cellIndex;
+  cell.parentElement.classList.add("highlight-row");
+  [...table.rows].forEach(r => r.cells[col] && r.cells[col].classList.add("highlight-col"));
+});
+table.addEventListener("mouseleave", () => {
+  table.querySelectorAll(".highlight-row").forEach(r => r.classList.remove("highlight-row"));
+  table.querySelectorAll(".highlight-col").forEach(c => c.classList.remove("highlight-col"));
+});
+
+/* ---------- TIMER (GLOBAL TICK) ---------- */
 let timersData = {};
 let globalTick = null;
 
-function ensureGlobalTick(){
-  if(globalTick) return;
-  globalTick = setInterval(()=>{
-    document.querySelectorAll(".timer[data-start]").forEach(cell=>{
+function ensureGlobalTick() {
+  if (globalTick) return;
+  globalTick = setInterval(() => {
+    document.querySelectorAll(".timer[data-start]").forEach(cell => {
       const start = +cell.dataset.start;
-      let remain = 240*60 - Math.floor((now()-start)/1000);
-      const id = cell.id.replace("t_","");
+      const remain = 240*60 - Math.floor((now() - start)/1000);
 
-      /* ===== SOS LOGIC ===== */
       if (remain <= 0) {
-        if (!cell.dataset.sos) {
-          cell.dataset.sos = "1";
-          cell.dataset.sosStart = now();
-          db.ref("timers/"+id).update({ startTime: now() });
+        cell.textContent = "_SoS_";
+        cell.className = "timer red";
+        if (!cell.dataset.done) {
+          cell.dataset.done = "1";
           try { document.getElementById("alertSound").play(); } catch(e){}
         }
-        remain = 240*60;
+        return;
       }
 
-      const mm = String(Math.floor(remain/60)).padStart(2,"0");
-      const ss = String(remain%60).padStart(2,"0");
-      const timeText = `${mm}:${ss}`;
+      cell.textContent =
+        String(Math.floor(remain/60)).padStart(2,'0') + ":" +
+        String(remain%60).padStart(2,'0');
 
-      if (cell.dataset.sos) {
-        if (now() - cell.dataset.sosStart >= 300000) {
-          delete cell.dataset.sos;
-          delete cell.dataset.sosStart;
-        } else {
-          const blink = Math.floor(now()/1000)%2===0;
-          cell.textContent = blink ? "_SoS_" : timeText;
-          cell.className = "timer red";
-          return;
-        }
-      }
-
-      /* ===== NORMAL RENDER ===== */
-      cell.textContent = timeText;
       cell.className = "timer";
       cell.classList.add(
-        remain>=235*60?"blue":
-        remain>5*60?"green":
-        remain>3*60?"yellow":"red"
+        remain >= 235*60 ? "blue" :
+        remain > 5*60 ? "green" :
+        remain > 3*60 ? "yellow" : "red"
       );
     });
-  },1000);
+
+    updateNotifications();
+  }, 1000);
 }
 
-function startTimer(id,start){
-  const cell=document.getElementById("t_"+id);
-  cell.dataset.start=start;
-  delete cell.dataset.sos;
-  delete cell.dataset.sosStart;
+function startTimer(id, startTime) {
+  const cell = document.getElementById("t_" + id);
+  const cb = document.getElementById(id);
+  if (!cell || !cb) return;
+
+  cb.checked = true;
+  cell.dataset.start = startTime;
+  delete cell.dataset.done;
   ensureGlobalTick();
 }
 
-function stopTimer(id){
-  const cell=document.getElementById("t_"+id);
+function stopTimer(id) {
+  const cell = document.getElementById("t_" + id);
+  const cb = document.getElementById(id);
+  if (!cell || !cb) return;
+
   delete cell.dataset.start;
-  delete cell.dataset.sos;
-  delete cell.dataset.sosStart;
-  cell.textContent="--";
-  cell.className="timer";
+  delete cell.dataset.done;
+  cell.textContent = "--";
+  cell.className = "timer";
+  cb.checked = false;
 }
 
-/* ---------- FIREBASE SYNC ---------- */
-db.ref("timers").on("child_added",s=>{
-  timersData[s.key]=s.val();
-  if(s.val().checked) startTimer(s.key,s.val().startTime);
+/* ---------- FIREBASE TIMER SYNC ---------- */
+db.ref("timers").on("child_added", s => {
+  timersData[s.key] = s.val();
+  if (s.val().checked) startTimer(s.key, s.val().startTime);
 });
-db.ref("timers").on("child_changed",s=>{
-  timersData[s.key]=s.val();
-  if(s.val().checked) startTimer(s.key,s.val().startTime);
+db.ref("timers").on("child_changed", s => {
+  timersData[s.key] = s.val();
+  if (s.val().checked) startTimer(s.key, s.val().startTime);
 });
-db.ref("timers").on("child_removed",s=>{
+db.ref("timers").on("child_removed", s => {
   delete timersData[s.key];
   stopTimer(s.key);
 });
 
-/* ---------- EVENTS ---------- */
-bosses.forEach(b=>{
-  for(let ch=1;ch<=30;ch++){
-    const id=`${ch}_${b}`;
-    const cb=document.getElementById(id);
-    const cell=document.getElementById("t_"+id);
+/* ---------- NOTIFICATIONS ---------- */
+function updateNotifications() {
+  let list = [];
+  Object.entries(timersData).forEach(([id,d]) => {
+    if (!d.checked) return;
+    const r = 240*60 - Math.floor((now()-d.startTime)/1000);
+    if (r <= 0) return;
+    const [ch,b] = id.split("_");
+    list.push({ch,b,r});
+  });
+  list.sort((a,b)=>a.r-b.r);
+  notifications.innerHTML = "";
+  list.slice(0,5).forEach(i => {
+    const div = document.createElement("div");
+    div.textContent = `Kênh ${i.ch} - Boss ${i.b} - Còn ${String(Math.floor(i.r/60)).padStart(2,'0')}:${String(i.r%60).padStart(2,'0')}`;
+    div.className = i.r>=235*60?"blue":i.r>5*60?"green":i.r>3*60?"yellow":"red";
+    notifications.appendChild(div);
+  });
+}
 
-    cb.onchange=e=>{
-      if(e.target.checked){
-        db.ref("timers/"+id).set({checked:true,startTime:now()});
-      }else{
-        db.ref("timers/"+id).remove();
-      }
+/* ---------- EVENTS ---------- */
+bosses.forEach(b => {
+  for (let ch = 1; ch <= 30; ch++) {
+    const id = `${ch}_${b}`;
+    const cb = document.getElementById(id);
+    const cell = document.getElementById("t_" + id);
+
+    cb.onchange = e => {
+  if (e.target.checked) {
+    // Tick → start timer như cũ
+    db.ref("timers/" + id).set({
+      checked: true,
+      startTime: now()
+    });
+    return;
+  }
+
+  // ===== UNTICK =====
+  const data = timersData[id];
+  if (!data || !data.startTime) {
+    db.ref("timers/" + id).remove();
+    return;
+  }
+
+  const remain =
+    240 * 60 - Math.floor((now() - data.startTime) / 1000);
+
+  // Chỉ hỏi khi 5–230 phút
+  if (remain >= 5 * 60 && remain <= 235 * 60) {
+    const ok = confirm("Bạn có muốn reset time boss?");
+    if (!ok) {
+      // Người dùng bấm NO → bật lại checkbox, không reset
+      e.target.checked = true;
+      return;
+    }
+  }
+
+  // YES hoặc ngoài khoảng → reset
+  db.ref("timers/" + id).remove();
+};
+
+
+    cb.oncontextmenu = e => {
+      e.preventDefault();
+      const ref = db.ref("colors/"+id);
+      ref.once("value").then(s => s.exists() ? ref.remove() : ref.set(true));
     };
 
-    /* CLICK TRÁI → TẮT SOS */
-    cell.onclick=()=>{
-      if(cell.dataset.sos){
-        delete cell.dataset.sos;
-        delete cell.dataset.sosStart;
-      }
+    cell.oncontextmenu = e => {
+      e.preventDefault();
+      const m = parseInt(prompt("Nhập số PHÚT muốn đếm ngược:"),10);
+      if (!m || m<=0) return alert("Vui lòng nhập số nguyên dương!");
+      const newStart = now() - (240*60 - m*60)*1000;
+      db.ref("timers/"+id).set({checked:true,startTime:newStart});
+      cb.checked = true;
     };
   }
 });
+
+/* ---------- COLORS ---------- */
+db.ref("colors").on("child_added", s => document.getElementById(s.key)?.classList.add("right-clicked"));
+db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classList.remove("right-clicked"));
 </script>
 
 </body>
 </html>
+
+
+
+
+
