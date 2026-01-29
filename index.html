@@ -430,10 +430,39 @@ bosses.forEach(b => {
     const cell = document.getElementById("t_" + id);
 
     cb.onchange = e => {
-      e.target.checked
-        ? db.ref("timers/"+id).set({checked:true,startTime:now()})
-        : db.ref("timers/"+id).remove();
-    };
+  if (e.target.checked) {
+    // Tick → start timer như cũ
+    db.ref("timers/" + id).set({
+      checked: true,
+      startTime: now()
+    });
+    return;
+  }
+
+  // ===== UNTICK =====
+  const data = timersData[id];
+  if (!data || !data.startTime) {
+    db.ref("timers/" + id).remove();
+    return;
+  }
+
+  const remain =
+    240 * 60 - Math.floor((now() - data.startTime) / 1000);
+
+  // Chỉ hỏi khi 5–230 phút
+  if (remain >= 5 * 60 && remain <= 230 * 60) {
+    const ok = confirm("Bạn có muốn reset time boss?");
+    if (!ok) {
+      // Người dùng bấm NO → bật lại checkbox, không reset
+      e.target.checked = true;
+      return;
+    }
+  }
+
+  // YES hoặc ngoài khoảng → reset
+  db.ref("timers/" + id).remove();
+};
+
 
     cb.oncontextmenu = e => {
       e.preventDefault();
@@ -459,5 +488,6 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
