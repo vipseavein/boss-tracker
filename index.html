@@ -334,13 +334,14 @@ let globalTick = null;
 
 function ensureGlobalTick() {
   if (globalTick) return;
+
   globalTick = setInterval(() => {
     document.querySelectorAll(".timer[data-start]").forEach(cell => {
+
       const start = +cell.dataset.start;
       const remain = 240*60 - Math.floor((now() - start)/1000);
 
-            // Chỉ reset 1 lần, trong khoảng 3 giây quanh mốc 0
-            // Chỉ reset 1 lần, trong khoảng 3 giây quanh mốc 0
+      // ===== RESET AN TOÀN =====
       if (remain <= 0 && remain >= -3 && !cell.dataset.resetDone) {
         const newStart = now();
         const id = cell.id.replace("t_", "");
@@ -355,30 +356,26 @@ function ensureGlobalTick() {
         return;
       }
 
-      // Nếu còn thời gian > 0 thì bỏ cờ resetDone (chu kỳ mới)
       if (remain > 0 && cell.dataset.resetDone) {
         delete cell.dataset.resetDone;
       }
 
-      // ❗ KHÔNG ĐƯỢC return ở đây
-      // ❗ KHÔNG ĐƯỢC đóng ngoặc ở đây
-// ===== NHẤP NHÁY SOS TRONG 5 PHÚT =====
-if (cell.dataset.sosStart && !cell.dataset.sosOff) {
-  const sosElapsed = Math.floor((now() - cell.dataset.sosStart) / 1000);
+      // ===== SOS =====
+      if (cell.dataset.sosStart && !cell.dataset.sosOff) {
+        const sosElapsed = Math.floor((now() - cell.dataset.sosStart) / 1000);
 
-  if (sosElapsed <= 300) { // 5 phút
-    if (Math.floor(now() / 1000) % 2 === 0) {
-      cell.textContent = "_SoS_";
-      cell.className = "timer red";
-      return;
-    }
-  } else {
-    // Hết 5 phút → tự tắt SoS
-    delete cell.dataset.sosStart;
-  }
-}
+        if (sosElapsed <= 300) {
+          if (Math.floor(now() / 1000) % 2 === 0) {
+            cell.textContent = "_SoS_";
+            cell.className = "timer red";
+            return;
+          }
+        } else {
+          delete cell.dataset.sosStart;
+        }
+      }
 
-      
+      // ===== HIỂN THỊ THỜI GIAN =====
       cell.textContent =
         String(Math.floor(remain/60)).padStart(2,'0') + ":" +
         String(remain%60).padStart(2,'0');
@@ -389,6 +386,7 @@ if (cell.dataset.sosStart && !cell.dataset.sosOff) {
         remain > 5*60 ? "green" :
         remain > 3*60 ? "yellow" : "red"
       );
+
     });
 
     updateNotifications();
@@ -574,6 +572,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
