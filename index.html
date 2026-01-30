@@ -340,15 +340,37 @@ function ensureGlobalTick() {
       const remain = 240*60 - Math.floor((now() - start)/1000);
 
       if (remain <= 0) {
-        cell.textContent = "_SoS_";
-        cell.className = "timer red";
-        if (!cell.dataset.done) {
-          cell.dataset.done = "1";
-          try { document.getElementById("alertSound").play(); } catch(e){}
-        }
-        return;
-      }
 
+  // Reset timer về 240 phút (đồng bộ qua Firebase)
+  const newStart = now();
+  const id = cell.id.replace("t_", "");
+
+  db.ref("timers/" + id).update({
+    startTime: newStart,
+    sosStart: newStart,
+    sosOff: false
+  });
+
+  return;
+}
+
+// ===== NHẤP NHÁY SOS TRONG 5 PHÚT =====
+if (cell.dataset.sosStart && !cell.dataset.sosOff) {
+  const sosElapsed = Math.floor((now() - cell.dataset.sosStart) / 1000);
+
+  if (sosElapsed <= 300) { // 5 phút
+    if (Math.floor(now() / 1000) % 2 === 0) {
+      cell.textContent = "_SoS_";
+      cell.className = "timer red";
+      return;
+    }
+  } else {
+    // Hết 5 phút → tự tắt SoS
+    delete cell.dataset.sosStart;
+  }
+}
+
+      
       cell.textContent =
         String(Math.floor(remain/60)).padStart(2,'0') + ":" +
         String(remain%60).padStart(2,'0');
@@ -365,14 +387,26 @@ function ensureGlobalTick() {
   }, 1000);
 }
 
-function startTimer(id, startTime) {
+function startTimer(id, startTime, sosStart = null, sosOff = false) {
   const cell = document.getElementById("t_" + id);
   const cb = document.getElementById(id);
   if (!cell || !cb) return;
 
   cb.checked = true;
   cell.dataset.start = startTime;
+
+  if (sosStart) {
+  cell.dataset.sosStart = sosStart;
+} else {
+  delete cell.dataset.sosStart;
+}
+
+
+  if (sosOff) cell.dataset.sosOff = "1";
+  else delete cell.dataset.sosOff;
+
   delete cell.dataset.done;
+
   ensureGlobalTick();
 }
 
@@ -391,12 +425,34 @@ function stopTimer(id) {
 /* ---------- FIREBASE TIMER SYNC ---------- */
 db.ref("timers").on("child_added", s => {
   timersData[s.key] = s.val();
-  if (s.val().checked) startTimer(s.key, s.val().startTime);
+  if (s.val().checked) {
+    startTimer(
+      s.key,
+      s.val().startTime,
+      s.val().sosStart,
+      s.val().sosOff
+    );
+  }
 });
-db.ref("timers").on("child_changed", s => {
-  timersData[s.key] = s.val();
-  if (s.val().checked) startTimer(s.key, s.val().startTime);
+
+  
+  db.ref("timers").on("child_changed", s => {
+  const old = timersData[s.key];
+  const data = s.val();
+  timersData[s.key] = data;
+
+  // Nếu startTime thay đổi → reset → phát âm thanh
+  if (old && old.startTime !== data.startTime) {
+    try { document.getElementById("alertSound").play(); } catch(e){}
+  }
+
+  if (data.checked) {
+    startTimer(s.key, data.startTime, data.sosStart, data.sosOff);
+  }
 });
+
+  
+
 db.ref("timers").on("child_removed", s => {
   delete timersData[s.key];
   stopTimer(s.key);
@@ -431,13 +487,21 @@ bosses.forEach(b => {
 
     cb.onchange = e => {
   if (e.target.checked) {
-    // Tick → start timer như cũ
-    db.ref("timers/" + id).set({
-      checked: true,
-      startTime: now()
-    });
-    return;
-  }
+  // Tick → start timer như cũ
+  db.ref("timers/" + id).set({
+    checked: true,
+    startTime: now()
+  });
+
+  //Lưu log check
+  db.ref("logs").push({
+    id: id,
+    time: now(),
+    action: "check"
+  });
+
+  return;
+}
 
   // ===== UNTICK =====
   const data = timersData[id];
@@ -461,6 +525,12 @@ bosses.forEach(b => {
 
   // YES hoặc ngoài khoảng → reset
   db.ref("timers/" + id).remove();
+//Lưu log Uncheck
+      db.ref("logs").push({
+    id: id,
+    time: now(),
+    action: "uncheck"
+});
 };
 
 
@@ -478,6 +548,14 @@ bosses.forEach(b => {
       db.ref("timers/"+id).set({checked:true,startTime:newStart});
       cb.checked = true;
     };
+    //xử lý CLICK TRÁI vào timer
+    cell.onclick = () => {
+  const id = cell.id.replace("t_", "");
+  db.ref("timers/" + id).update({ sosOff: true });// Tắt SoS
+
+};
+
+    
   }
 });
 
@@ -488,6 +566,14 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
+
+
+
+
+
+
+
 
 
 
