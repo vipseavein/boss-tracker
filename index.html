@@ -493,6 +493,14 @@ bosses.forEach(b => {
       startTime: now()
     });
     return;
+//Lưu log check
+    db.ref("logs").push({
+    id: id,
+    time: now(),
+    action: "check"
+});
+    
+    
   }
 
   // ===== UNTICK =====
@@ -517,6 +525,12 @@ bosses.forEach(b => {
 
   // YES hoặc ngoài khoảng → reset
   db.ref("timers/" + id).remove();
+//Lưu log Uncheck
+      db.ref("logs").push({
+    id: id,
+    time: now(),
+    action: "uncheck"
+});
 };
 
 
@@ -552,6 +566,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
