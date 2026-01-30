@@ -340,8 +340,8 @@ function ensureGlobalTick() {
       const remain = 240*60 - Math.floor((now() - start)/1000);
 
             // Chỉ reset 1 lần, trong khoảng 3 giây quanh mốc 0
+            // Chỉ reset 1 lần, trong khoảng 3 giây quanh mốc 0
       if (remain <= 0 && remain >= -3 && !cell.dataset.resetDone) {
-        // Reset timer về 240 phút (đồng bộ qua Firebase)
         const newStart = now();
         const id = cell.id.replace("t_", "");
 
@@ -351,7 +351,6 @@ function ensureGlobalTick() {
           sosOff: false
         });
 
-        // Đánh dấu đã reset để không reset lặp lại
         cell.dataset.resetDone = "1";
         return;
       }
@@ -361,9 +360,8 @@ function ensureGlobalTick() {
         delete cell.dataset.resetDone;
       }
 
-  return;
-}
-
+      // ❗ KHÔNG ĐƯỢC return ở đây
+      // ❗ KHÔNG ĐƯỢC đóng ngoặc ở đây
 // ===== NHẤP NHÁY SOS TRONG 5 PHÚT =====
 if (cell.dataset.sosStart && !cell.dataset.sosOff) {
   const sosElapsed = Math.floor((now() - cell.dataset.sosStart) / 1000);
@@ -576,6 +574,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
