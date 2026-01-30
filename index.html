@@ -487,21 +487,21 @@ bosses.forEach(b => {
 
     cb.onchange = e => {
   if (e.target.checked) {
-    // Tick → start timer như cũ
-    db.ref("timers/" + id).set({
-      checked: true,
-      startTime: now()
-    });
-    return;
-//Lưu log check
-    db.ref("logs").push({
+  // Tick → start timer như cũ
+  db.ref("timers/" + id).set({
+    checked: true,
+    startTime: now()
+  });
+
+  //Lưu log check
+  db.ref("logs").push({
     id: id,
     time: now(),
     action: "check"
-});
-    
-    
-  }
+  });
+
+  return;
+}
 
   // ===== UNTICK =====
   const data = timersData[id];
@@ -566,6 +566,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
