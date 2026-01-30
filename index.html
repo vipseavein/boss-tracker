@@ -425,7 +425,19 @@ function stopTimer(id) {
 }
 
 /* ---------- FIREBASE TIMER SYNC ---------- */
+db.ref("timers").on("child_added", s => {
+  timersData[s.key] = s.val();
+  if (s.val().checked) {
+    startTimer(
+      s.key,
+      s.val().startTime,
+      s.val().sosStart,
+      s.val().sosOff
+    );
+  }
+});
 
+  
   db.ref("timers").on("child_changed", s => {
   const old = timersData[s.key];
   const data = s.val();
@@ -542,6 +554,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
