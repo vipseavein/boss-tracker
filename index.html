@@ -339,17 +339,27 @@ function ensureGlobalTick() {
       const start = +cell.dataset.start;
       const remain = 240*60 - Math.floor((now() - start)/1000);
 
-      if (remain <= 0) {
+            // Chỉ reset 1 lần, trong khoảng 3 giây quanh mốc 0
+      if (remain <= 0 && remain >= -3 && !cell.dataset.resetDone) {
+        // Reset timer về 240 phút (đồng bộ qua Firebase)
+        const newStart = now();
+        const id = cell.id.replace("t_", "");
 
-  // Reset timer về 240 phút (đồng bộ qua Firebase)
-  const newStart = now();
-  const id = cell.id.replace("t_", "");
+        db.ref("timers/" + id).update({
+          startTime: newStart,
+          sosStart: newStart,
+          sosOff: false
+        });
 
-  db.ref("timers/" + id).update({
-    startTime: newStart,
-    sosStart: newStart,
-    sosOff: false
-  });
+        // Đánh dấu đã reset để không reset lặp lại
+        cell.dataset.resetDone = "1";
+        return;
+      }
+
+      // Nếu còn thời gian > 0 thì bỏ cờ resetDone (chu kỳ mới)
+      if (remain > 0 && cell.dataset.resetDone) {
+        delete cell.dataset.resetDone;
+      }
 
   return;
 }
