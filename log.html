@@ -219,6 +219,7 @@
         if (!log || !log.id || !log.time) return;
         allLogs.push(log);
       });
+    allLogs.reverse();
 
       applyFilters();
     });
@@ -395,4 +396,5 @@
 
 </body>
 </html>
+
 
