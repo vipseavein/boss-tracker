@@ -395,12 +395,13 @@ function startTimer(id, startTime, sosStart = null, sosOff = false) {
   cb.checked = true;
   cell.dataset.start = startTime;
 
-  if (sosStart) cell.dataset.sosStart = sosStart;
-  else 
-
-    const id = cell.id.replace("t_", "");
-db.ref("timers/" + id).update({ sosStart: null });
-delete cell.dataset.sosStart;
+  if (sosStart) {
+  cell.dataset.sosStart = sosStart;
+} else {
+  const id2 = cell.id.replace("t_", "");
+  db.ref("timers/" + id2).update({ sosStart: null });
+  delete cell.dataset.sosStart;
+}
 
 
   if (sosOff) cell.dataset.sosOff = "1";
@@ -441,19 +442,7 @@ function stopTimer(id) {
 });
 
   
-db.ref("timers").on("child_changed", s => {
-  timersData[s.key] = s.val();
-  
-  if (s.val().checked) {
-  startTimer(
-    s.key,
-    s.val().startTime,
-    s.val().sosStart,
-    s.val().sosOff
-  );
-}
-  
-});
+
 db.ref("timers").on("child_removed", s => {
   delete timersData[s.key];
   stopTimer(s.key);
@@ -553,6 +542,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
