@@ -341,18 +341,15 @@ function ensureGlobalTick() {
 
       if (remain <= 0) {
 
-  // Reset timer về 240 phút
+  // Reset timer về 240 phút (đồng bộ qua Firebase)
   const newStart = now();
-  cell.dataset.start = newStart;
+  const id = cell.id.replace("t_", "");
 
-  // Ghi lại thời điểm reset để tính 5 phút nhấp nháy
-  cell.dataset.sosStart = newStart;
-
-  // Phát âm thanh 1 lần
-  if (!cell.dataset.done) {
-    cell.dataset.done = "1";
-    try { document.getElementById("alertSound").play(); } catch(e){}
-  }
+  db.ref("timers/" + id).update({
+    startTime: newStart,
+    sosStart: newStart,
+    sosOff: false
+  });
 
   return;
 }
@@ -390,14 +387,27 @@ if (cell.dataset.sosStart && !cell.dataset.sosOff) {
   }, 1000);
 }
 
-function startTimer(id, startTime) {
+function startTimer(id, startTime, sosStart = null, sosOff = false) {
   const cell = document.getElementById("t_" + id);
   const cb = document.getElementById(id);
   if (!cell || !cb) return;
 
   cb.checked = true;
   cell.dataset.start = startTime;
+
+  if (sosStart) cell.dataset.sosStart = sosStart;
+  else 
+
+    const id = cell.id.replace("t_", "");
+db.ref("timers/" + id).update({ sosStart: null });
+delete cell.dataset.sosStart;
+
+
+  if (sosOff) cell.dataset.sosOff = "1";
+  else delete cell.dataset.sosOff;
+
   delete cell.dataset.done;
+
   ensureGlobalTick();
 }
 
@@ -414,13 +424,35 @@ function stopTimer(id) {
 }
 
 /* ---------- FIREBASE TIMER SYNC ---------- */
-db.ref("timers").on("child_added", s => {
-  timersData[s.key] = s.val();
-  if (s.val().checked) startTimer(s.key, s.val().startTime);
+
+  db.ref("timers").on("child_changed", s => {
+  const old = timersData[s.key];
+  const data = s.val();
+  timersData[s.key] = data;
+
+  // Nếu startTime thay đổi → reset → phát âm thanh
+  if (old && old.startTime !== data.startTime) {
+    try { document.getElementById("alertSound").play(); } catch(e){}
+  }
+
+  if (data.checked) {
+    startTimer(s.key, data.startTime, data.sosStart, data.sosOff);
+  }
 });
+
+  
 db.ref("timers").on("child_changed", s => {
   timersData[s.key] = s.val();
-  if (s.val().checked) startTimer(s.key, s.val().startTime);
+  
+  if (s.val().checked) {
+  startTimer(
+    s.key,
+    s.val().startTime,
+    s.val().sosStart,
+    s.val().sosOff
+  );
+}
+  
 });
 db.ref("timers").on("child_removed", s => {
   delete timersData[s.key];
@@ -505,8 +537,10 @@ bosses.forEach(b => {
     };
     //xử lý CLICK TRÁI vào timer
     cell.onclick = () => {
-    cell.dataset.sosOff = "1"; // Tắt SoS
-    };
+  const id = cell.id.replace("t_", "");
+  db.ref("timers/" + id).update({ sosOff: true });// Tắt SoS
+
+};
 
     
   }
@@ -519,6 +553,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
