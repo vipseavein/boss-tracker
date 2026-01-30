@@ -398,8 +398,6 @@ function startTimer(id, startTime, sosStart = null, sosOff = false) {
   if (sosStart) {
   cell.dataset.sosStart = sosStart;
 } else {
-  const id2 = cell.id.replace("t_", "");
-  db.ref("timers/" + id2).update({ sosStart: null });
   delete cell.dataset.sosStart;
 }
 
@@ -554,6 +552,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
