@@ -339,7 +339,7 @@ function ensureGlobalTick() {
     document.querySelectorAll(".timer[data-start]").forEach(cell => {
 
       const start = +cell.dataset.start;
-      const remain = 240*60 - Math.floor((now() - start)/1000);
+const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
 
       // ===== RESET AN TOÀN =====
       if (remain <= 0 && remain >= -3 && !cell.dataset.resetDone) {
@@ -572,6 +572,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
