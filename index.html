@@ -520,7 +520,7 @@ bosses.forEach(b => {
     240 * 60 - Math.floor((now() - data.startTime) / 1000);
 
   // Chỉ hỏi khi 5–230 phút
-  if (remain >= 5 * 60 && remain <= 235 * 60) {
+  if (remain >= 3 * 60 && remain <= 238 * 60) {
     const ok = confirm("Bạn có muốn reset time boss?");
     if (!ok) {
       // Người dùng bấm NO → bật lại checkbox, không reset
@@ -572,6 +572,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
