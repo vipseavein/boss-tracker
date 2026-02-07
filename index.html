@@ -341,20 +341,13 @@ function ensureGlobalTick() {
       const start = +cell.dataset.start;
 const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
 
-      // ===== RESET AN TOÀN =====
-      if (remain <= 0 && remain >= -3 && !cell.dataset.resetDone) {
-        const newStart = now();
-        const id = cell.id.replace("t_", "");
+      // ===== HẾT TIME → CHỈ HIỂN THỊ =====
+if (remain <= 0) {
+  cell.textContent = "Respawn";
+  cell.className = "timer red";
+  return;
+}
 
-     db.ref("timers/" + id).update({
-       startTime: newStart,
-       sosStart: newStart,
-       sosOff: false
-      });
-
-       cell.dataset.resetDone = "1";
-      return;
-      }
 
       if (remain > 0 && cell.dataset.resetDone) {
         delete cell.dataset.resetDone;
@@ -572,6 +565,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
