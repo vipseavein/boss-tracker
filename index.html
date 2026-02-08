@@ -343,11 +343,10 @@ const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
 
       // ===== HẾT TIME → CHỈ HIỂN THỊ =====
 if (remain <= 0) {
-  // chỉ đánh dấu đã hết, KHÔNG return
-  cell.textContent = "BOSS";
-  cell.dataset.expired = "1";
+  cell.textContent = "Respawn";
+  cell.className = "timer red";
+  return;
 }
-
 
 
       if (remain > 0 && cell.dataset.resetDone) {
@@ -355,7 +354,7 @@ if (remain <= 0) {
       }
 
       // ===== SOS =====
-      if ((cell.dataset.sosStart || cell.dataset.expired) && !cell.dataset.sosOff) {
+      if (cell.dataset.sosStart && !cell.dataset.sosOff) {
         const sosElapsed = Math.floor((now() - cell.dataset.sosStart) / 1000);
 
         if (sosElapsed <= 300) {
@@ -566,7 +565,6 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
-
 
 
 
