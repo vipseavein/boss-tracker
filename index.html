@@ -343,21 +343,23 @@ const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
 
       // ===== HẾT TIME → CHỈ HIỂN THỊ =====
 if (remain <= 0) {
- 
-    // chỉ phát 1 lần duy nhất
+
+  // phát âm thanh đúng 1 lần khi chạm 00:00
   if (!cell.dataset.done) {
     cell.dataset.done = "1";
     try {
-      document.getElementById("alertSound").currentTime = 0;
-      document.getElementById("alertSound").play();
+      const snd = document.getElementById("alertSound");
+      snd.currentTime = 0;
+      snd.play();
     } catch(e){}
   }
 
+  // trong lúc CHỜ firebase reset → chỉ HIỂN THỊ
   cell.textContent = "Respawn";
   cell.className = "timer red";
 
-  
-  //return;
+  // ⛔ KHÔNG CHẠY CÁC LOGIC BÊN DƯỚI
+  return; // <-- CHỈ return ở ĐÂY, bên trong forEach
 }
 
 
@@ -577,6 +579,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
