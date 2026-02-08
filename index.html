@@ -344,6 +344,7 @@ const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
       // ===== HẾT TIME → CHỈ HIỂN THỊ =====
 if (remain <= 0) {
   // chỉ đánh dấu đã hết, KHÔNG return
+  cell.textContent = "BOSS";
   cell.dataset.expired = "1";
 }
 
@@ -565,6 +566,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
