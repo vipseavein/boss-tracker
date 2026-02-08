@@ -454,7 +454,7 @@ db.ref("timers").on("child_added", s => {
   const data = s.val();
   timersData[s.key] = data;
   delete data.expired;
-   Nếu startTime thay đổi → reset → phát âm thanh
+  // Nếu startTime thay đổi → reset → phát âm thanh
   if (old && old.startTime !== data.startTime) {
     try { document.getElementById("alertSound").play(); } catch(e){}
   }
@@ -579,6 +579,28 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
