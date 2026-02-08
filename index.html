@@ -345,7 +345,7 @@ const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
 if (remain <= 0) {
   cell.textContent = "Respawn";
   cell.className = "timer red";
-  return;
+  //return;
 }
 
 
@@ -565,6 +565,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
