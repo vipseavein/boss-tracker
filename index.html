@@ -341,7 +341,7 @@ function ensureGlobalTick() {
       const start = +cell.dataset.start;
 const remain = Math.max(0, 240*60 - Math.floor((now() - start)/1000));
 
-   /*  CŨ // ===== HẾT TIME → CHỈ HIỂN THỊ =====
+      // ===== HẾT TIME → CHỈ HIỂN THỊ =====
 if (remain <= 0) {
 
   // phát âm thanh đúng 1 lần khi chạm 00:00
@@ -361,32 +361,7 @@ if (remain <= 0) {
   // ⛔ KHÔNG CHẠY CÁC LOGIC BÊN DƯỚI
   return; // <-- CHỈ return ở ĐÂY, bên trong forEach
 }
-*/
 
-if (remain <= 0) {
-
-  // 🔊 PHÁT ÂM THANH ĐÚNG 1 LẦN KHI CHẠM 00:00
-  if (!cell.dataset.done) {
-    cell.dataset.done = "1";
-
-    try {
-      const snd = document.getElementById("alertSound");
-      snd.currentTime = 0;
-      snd.play();
-    } catch (e) {}
-  }
-
-  cell.textContent = "BOSS";
-  cell.className = "timer red";
-
-  // ❗ cho timer thoát trạng thái cũ
-  delete cell.dataset.start;
-
-  return;
-}
-
-
-      
 
       if (remain > 0 && cell.dataset.resetDone) {
         delete cell.dataset.resetDone;
@@ -473,7 +448,7 @@ db.ref("timers").on("child_added", s => {
   }
 });
 
-  /* PHÁT ÂM THANH
+  
   db.ref("timers").on("child_changed", s => {
   const old = timersData[s.key];
   const data = s.val();
@@ -488,7 +463,7 @@ db.ref("timers").on("child_added", s => {
     startTimer(s.key, data.startTime, data.sosStart, data.sosOff);
   }
 });
-*/
+
   
 
 db.ref("timers").on("child_removed", s => {
@@ -604,5 +579,8 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
+
+
 
 
