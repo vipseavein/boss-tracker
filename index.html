@@ -365,10 +365,9 @@ if (remain <= 0) {
 
 if (remain <= 0) {
 
-  // 🔊 PHÁT ÂM THANH ĐÚNG 1 LẦN KHI CHẠM 00:00
+  // Phát âm thanh đúng 1 lần
   if (!cell.dataset.done) {
     cell.dataset.done = "1";
-
     try {
       const snd = document.getElementById("alertSound");
       snd.currentTime = 0;
@@ -376,11 +375,14 @@ if (remain <= 0) {
     } catch (e) {}
   }
 
+  // Hiển thị BOSS trong 1 giây
   cell.textContent = "BOSS";
   cell.className = "timer red";
 
-  // ❗ cho timer thoát trạng thái cũ
-  delete cell.dataset.start;
+  // ⭐ KHÔNG xóa startTime
+  // ⭐ Tự reset startTime local để đếm tiếp 240 phút
+  const newLocalStart = now();
+  cell.dataset.start = newLocalStart;
 
   return;
 }
@@ -604,6 +606,7 @@ db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classL
 
 </body>
 </html>
+
 
 
 
