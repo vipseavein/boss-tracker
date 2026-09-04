@@ -79,6 +79,8 @@ auth.onAuthStateChanged(async user => {
     .filter(config => config && config.name && canUseBoss(config.name))
     .sort((a, b) => (a.order ?? 9999) - (b.order ?? 9999) || a.name.localeCompare(b.name));
 
+  await migrateLegacyBossFields();
+
   const displayName = user.displayName || user.email?.split("@")[0] || "User";
   document.getElementById("userGreeting").innerHTML = "";
   document.getElementById("userGreeting").append("Xin chào “", Object.assign(document.createElement("strong"), { textContent: displayName }), "”");
@@ -88,6 +90,30 @@ auth.onAuthStateChanged(async user => {
   attachFirebaseListeners();
   document.body.classList.remove("auth-pending");
 });
+
+async function migrateLegacyBossFields() {
+  try {
+    const [timerSnap, colorSnap] = await Promise.all([
+      db.ref("timers").once("value"),
+      db.ref("colors").once("value")
+    ]);
+    const allowed = new Set(visibleBosses.map(config => config.name));
+    const jobs = [];
+
+    Object.entries(timerSnap.val() || {}).forEach(([id, value]) => {
+      const boss = value?.boss || id.split("_").slice(1).join("_");
+      if (allowed.has(boss) && !value?.boss) jobs.push(db.ref("timers/" + id).update({ boss }));
+    });
+    Object.entries(colorSnap.val() || {}).forEach(([id, value]) => {
+      const boss = value?.boss || id.split("_").slice(1).join("_");
+      if (!allowed.has(boss) || value?.boss) return;
+      jobs.push(db.ref("colors/" + id).set(typeof value === "object" ? { ...value, boss } : { active: true, boss }));
+    });
+    await Promise.all(jobs);
+  } catch (error) {
+    console.warn("Không thể nâng cấp một số timer cũ:", error);
+  }
+}
 
 function buildInterface() {
   table.innerHTML = "";
