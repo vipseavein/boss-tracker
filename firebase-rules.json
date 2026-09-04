@@ -20,14 +20,13 @@
       ".read": "auth != null",
       ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('logAccess').val() === 'full')",
       "$timerId": {
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('allowedBosses').child(newData.child('boss').val()).val() === true || (!newData.exists() && root.child('users').child(auth.uid).child('allowedBosses').child(data.child('boss').val()).val() === true))"
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('timerAccess').child(auth.uid).child($timerId).val() === true)"
       }
     },
     "colors": {
       ".read": "auth != null",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$timerId": {
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('allowedBosses').child(newData.child('boss').val()).val() === true || (!newData.exists() && root.child('users').child(auth.uid).child('allowedBosses').child(data.child('boss').val()).val() === true))"
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('timerAccess').child(auth.uid).child($timerId).val() === true || root.child('users').child(auth.uid).child('logAccess').val() === 'full')"
       }
     },
     "logs": {
@@ -40,6 +39,13 @@
     "bossConfigs": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+    },
+    "timerAccess": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+      }
     }
   }
 }

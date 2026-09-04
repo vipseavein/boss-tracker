@@ -21,7 +21,7 @@ auth.onAuthStateChanged(async user => {
   if (profile.role !== "admin") return location.replace("index.html");
   document.body.classList.remove("auth-pending");
   db.ref("directory").on("value", s => { directoryData = s.val() || {}; renderUsers(); });
-  db.ref("users").on("value", s => { permissionsData = s.val() || {}; renderUsers(); });
+  db.ref("users").on("value", s => { permissionsData = s.val() || {}; renderUsers(); syncTimerAccess(); });
   db.ref("bossConfigs").on("value", async s => {
     bossConfigs = s.val() || {};
     if (!Object.keys(bossConfigs).length && !defaultsCreated) {
@@ -35,6 +35,20 @@ auth.onAuthStateChanged(async user => {
 });
 
 function bossNames() { return Object.values(bossConfigs).filter(Boolean).sort((a,b)=>(a.order??9999)-(b.order??9999)).map(x=>x.name); }
+async function syncTimerAccess() {
+  const access = {};
+  Object.entries(permissionsData).forEach(([uid, profile]) => {
+    if (profile?.role === "admin") return;
+    const userAccess = {};
+    Object.entries(profile?.allowedBosses || {}).forEach(([boss, allowed]) => {
+      if (!allowed) return;
+      for (let channel = 1; channel <= 30; channel++) userAccess[`${channel}_${boss}`] = true;
+    });
+    access[uid] = userAccess;
+  });
+  try { await db.ref("timerAccess").set(access); }
+  catch (error) { console.error("Không thể đồng bộ quyền timer:", error); }
+}
 function setStatus(text, error=false) { statusBox.textContent=text; statusBox.style.color=error?"#ff7b72":"#79c0ff"; }
 function logLabel(profile) {
   if (profile.role === "admin" || profile.logAccess === "full") return "Full";
