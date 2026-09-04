@@ -217,6 +217,7 @@ const firebaseConfig = {
    
 
     const db = firebase.database();
+    let logPageIsAdmin = false;
     firebase.auth().onAuthStateChanged(async user => {
       if (!user || user.isAnonymous) {
         location.replace("login.html");
@@ -224,7 +225,11 @@ const firebaseConfig = {
       }
       try {
         const profile = (await db.ref("users/" + user.uid).once("value")).val() || {};
-        if (profile.role !== "admin") { location.replace("index.html"); return; }
+        logPageIsAdmin = profile.role === "admin";
+        if (!logPageIsAdmin && profile.canViewLogs !== true) { location.replace("index.html"); return; }
+        ["clearLogs", "clearAllLogs", "resetAllCheckboxes"].forEach(id => {
+          document.getElementById(id).style.display = logPageIsAdmin ? "inline-block" : "none";
+        });
       } catch (error) { location.replace("index.html"); return; }
       document.body.classList.remove("auth-pending");
     });

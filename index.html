@@ -363,6 +363,7 @@ firebase.auth().onAuthStateChanged(async user => {
 });
 
 function isAdmin() { return currentProfile && currentProfile.role === "admin"; }
+function canViewLogs() { return isAdmin() || !!(currentProfile && currentProfile.canViewLogs === true); }
 function canUseBoss(boss) { return isAdmin() || !!(currentProfile && currentProfile.allowedBosses && currentProfile.allowedBosses[boss] === true); }
 function applyBossPermissions() {
   bosses.forEach((boss, index) => {
@@ -372,7 +373,7 @@ function applyBossPermissions() {
     const toggle = document.querySelector(`.colToggle[data-col="${column}"]`);
     if (toggle) toggle.closest("label").classList.toggle("permission-hidden", !allowed);
   });
-  document.getElementById("logButton").style.display = isAdmin() ? "block" : "none";
+  document.getElementById("logButton").style.display = canViewLogs() ? "block" : "none";
   document.getElementById("adminButton").style.display = isAdmin() ? "block" : "none";
   updateNotifications();
 }

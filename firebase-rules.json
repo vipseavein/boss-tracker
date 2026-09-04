@@ -31,7 +31,7 @@
       }
     },
     "logs": {
-      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('canViewLogs').val() === true)",
       ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$logId": {
         ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (newData.child('userUid').val() === auth.uid && root.child('users').child(auth.uid).child('allowedBosses').child(newData.child('boss').val()).val() === true))"

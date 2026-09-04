@@ -32,6 +32,20 @@
     .badge { display: inline-block; padding: 3px 7px; margin: 2px 3px 2px 0; border-radius: 10px; background: #263b50; font-size: 12px; }
     .role-admin { color: #d2a8ff; font-weight: 700; }
     .empty { color: #8b949e; }
+    .admin-controls { position: fixed; right: 20px; bottom: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+    .admin-controls button { min-width: 105px; box-shadow: 0 0 10px rgba(0,0,0,.3); }
+    #adminBack { background: #ff9800; }
+    #adminLog { background: #1f6feb; }
+    #themeToggle { background: #58a6ff; }
+    #adminLogout { background: #dc3545; }
+    body.light { background: #f2f2f2; color: #222; }
+    body.light .card { background: #fff; border-color: #b7c9dc; box-shadow: 0 8px 22px rgba(0,0,0,.12); }
+    body.light .note, body.light label, body.light .empty { color: #53657a; }
+    body.light input[type="text"], body.light select, body.light .bosses label { background: #f7fbff; color: #222; border-color: #9bb9d6; }
+    body.light .user-table th, body.light h1 { color: #075cae; }
+    body.light .user-table th, body.light .user-table td { border-color: #c8d8e8; }
+    body.light .user-row:hover, body.light .user-row.selected { background: #e7f2ff; }
+    body.light .badge { background: #dcecff; color: #174f80; }
     @media (max-width: 650px) { body { padding: 15px; } .grid { grid-template-columns: 1fr; } }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -45,8 +59,8 @@
     <section class="card">
       <strong>Danh sách người dùng</strong>
       <table class="user-table">
-        <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Boss được cấp</th></tr></thead>
-        <tbody id="userList"><tr><td colspan="3" class="empty">Đang tải...</td></tr></tbody>
+        <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Quyền Log</th><th>Boss được cấp</th></tr></thead>
+        <tbody id="userList"><tr><td colspan="4" class="empty">Đang tải...</td></tr></tbody>
       </table>
     </section>
     <section class="card">
@@ -62,8 +76,10 @@
       </div>
       <div class="actions" style="margin-top:12px">
         <button id="load" type="button">TẢI BẰNG UID</button>
-        <button id="back" type="button">QUAY LẠI</button>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:16px;color:#e6edf3">
+        <input id="canViewLogs" type="checkbox"> Cho phép người dùng xem trang Log
+      </label>
       <div id="bosses" class="bosses"></div>
       <button id="save" type="button">LƯU PHÂN QUYỀN</button>
       <div id="status" role="status"></div>
@@ -72,6 +88,12 @@
       Admin được xem tất cả boss, trang Log và các nút quản trị. User chỉ thấy boss được đánh dấu. Không xóa UID admin đang sử dụng trong mục <code>users</code>.
     </section>
   </main>
+  <div class="admin-controls">
+    <button id="adminBack" type="button">BACK</button>
+    <button id="adminLog" type="button">LOG</button>
+    <button id="themeToggle" type="button">LIGHT MODE</button>
+    <button id="adminLogout" type="button">LOG OUT</button>
+  </div>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyD78MgA3rKInTGyAzFW7kmuq-xJENbnqSA",
@@ -86,6 +108,7 @@
     const bossNames = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
     const uidInput = document.getElementById("uid");
     const roleInput = document.getElementById("role");
+    const canViewLogsInput = document.getElementById("canViewLogs");
     const statusBox = document.getElementById("status");
     const bossesBox = document.getElementById("bosses");
     const userList = document.getElementById("userList");
@@ -120,7 +143,7 @@
       const uids = [...new Set([...Object.keys(directoryData), ...Object.keys(permissionsData)])];
       userList.innerHTML = "";
       if (!uids.length) {
-        userList.innerHTML = '<tr><td colspan="3" class="empty">Chưa có user. Tài khoản sẽ xuất hiện sau lần đăng nhập đầu tiên.</td></tr>';
+        userList.innerHTML = '<tr><td colspan="4" class="empty">Chưa có user. Tài khoản sẽ xuất hiện sau lần đăng nhập đầu tiên.</td></tr>';
         return;
       }
       uids.sort((a, b) => (directoryData[a]?.email || a).localeCompare(directoryData[b]?.email || b));
@@ -142,12 +165,16 @@
         role.textContent = profile.role === "admin" ? "Admin" : "User";
         if (profile.role === "admin") role.className = "role-admin";
 
+        const logAccess = document.createElement("td");
+        logAccess.textContent = profile.role === "admin" || profile.canViewLogs === true ? "Được xem" : "Không";
+        if (profile.role === "admin" || profile.canViewLogs === true) logAccess.style.color = "#3fb950";
+
         const rights = document.createElement("td");
         const names = permissionSummary(profile);
         if (!names.length) { rights.textContent = "Chưa được cấp boss"; rights.className = "empty"; }
         else names.forEach(name => { const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = name; rights.appendChild(badge); });
 
-        row.append(account, role, rights);
+        row.append(account, role, logAccess, rights);
         row.onclick = () => selectUser(uid);
         userList.appendChild(row);
       });
@@ -157,6 +184,8 @@
       uidInput.value = uid;
       const profile = permissionsData[uid] || {};
       roleInput.value = profile.role === "admin" ? "admin" : "user";
+      canViewLogsInput.checked = profile.role === "admin" || profile.canViewLogs === true;
+      canViewLogsInput.disabled = profile.role === "admin";
       bossesBox.querySelectorAll("input").forEach(box => box.checked = !!(profile.allowedBosses && profile.allowedBosses[box.value]));
       document.querySelectorAll(".user-row").forEach(row => row.classList.toggle("selected", row.dataset.uid === uid));
       setStatus("Đã chọn người dùng. Thay đổi quyền rồi bấm Lưu.");
@@ -173,6 +202,8 @@
       try {
         const profile = (await db.ref("users/" + uid).once("value")).val() || {};
         roleInput.value = profile.role === "admin" ? "admin" : "user";
+        canViewLogsInput.checked = profile.role === "admin" || profile.canViewLogs === true;
+        canViewLogsInput.disabled = profile.role === "admin";
         bossesBox.querySelectorAll("input").forEach(box => box.checked = !!(profile.allowedBosses && profile.allowedBosses[box.value]));
         setStatus(profile.role ? "Đã tải quyền hiện tại." : "UID chưa có cấu hình. Hãy chọn quyền và bấm Lưu.");
       } catch (e) { setStatus("Không thể tải dữ liệu. Kiểm tra Firebase Rules.", true); }
@@ -184,12 +215,37 @@
       const allowedBosses = {};
       bossesBox.querySelectorAll("input:checked").forEach(box => allowedBosses[box.value] = true);
       try {
-        await db.ref("users/" + uid).set({ role: roleInput.value, allowedBosses, updatedAt: firebase.database.ServerValue.TIMESTAMP });
+        await db.ref("users/" + uid).set({
+          role: roleInput.value,
+          canViewLogs: roleInput.value === "admin" || canViewLogsInput.checked,
+          allowedBosses,
+          updatedAt: firebase.database.ServerValue.TIMESTAMP
+        });
         setStatus("Đã lưu phân quyền thành công.");
       } catch (e) { setStatus("Không thể lưu. Kiểm tra quyền Admin trong Firebase Rules.", true); }
     };
 
-    document.getElementById("back").onclick = () => location.href = "index.html";
+    roleInput.onchange = () => {
+      const admin = roleInput.value === "admin";
+      canViewLogsInput.disabled = admin;
+      if (admin) canViewLogsInput.checked = true;
+    };
+
+    document.getElementById("adminBack").onclick = () => location.href = "index.html";
+    document.getElementById("adminLog").onclick = () => location.href = "log.html";
+    document.getElementById("adminLogout").onclick = () => firebase.auth().signOut().then(() => location.replace("login.html"));
+
+    const themeToggle = document.getElementById("themeToggle");
+    function applyTheme(mode) {
+      document.body.classList.toggle("light", mode === "light");
+      themeToggle.textContent = mode === "light" ? "DARK MODE" : "LIGHT MODE";
+    }
+    applyTheme(localStorage.getItem("themeMode") || "dark");
+    themeToggle.onclick = () => {
+      const mode = document.body.classList.contains("light") ? "dark" : "light";
+      localStorage.setItem("themeMode", mode);
+      applyTheme(mode);
+    };
   </script>
 </body>
 </html>
