@@ -1,0 +1,25 @@
+THIET LAP PHAN QUYEN LAN DAU
+============================
+
+FIREBASE PROJECT DA KET NOI
+- Project ID: boss-tracker-893f8
+- Database: https://boss-tracker-893f8-default-rtdb.asia-southeast1.firebasedatabase.app/
+- Admin UID: guCPntMHVLRJuKj5AhpK173OkF53
+
+1. Firebase Console > Authentication > Users.
+2. Tai khoan Admin da dung UID: guCPntMHVLRJuKj5AhpK173OkF53
+3. Realtime Database > Data phai co du lieu:
+
+users
+  guCPntMHVLRJuKj5AhpK173OkF53
+    role: "admin"
+
+4. Tai Realtime Database > Rules, dan noi dung file firebase-rules.json va Publish.
+5. Dang nhap bang tai khoan Admin. Nut PHAN QUYEN se hien tren trang chinh.
+6. Mo PHAN QUYEN, dan UID cua tung tai khoan, chon role/boss va bam LUU.
+
+LUU Y
+- Ten boss trong allowedBosses duoc tao tu dong boi admin.html.
+- Cac timer/color cu tao truoc ban nay chua co truong boss. Admin nen dung nut
+  Reset toan bo checkbox mot lan sau khi cap nhat Rules, roi tao timer moi.
+- Khong xoa users/guCPntMHVLRJuKj5AhpK173OkF53 neu chua tao mot Admin khac.

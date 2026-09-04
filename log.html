@@ -12,6 +12,8 @@
       padding: 20px;
     }
 
+    body.auth-pending > * { visibility: hidden; }
+
     h2 {
       text-align: center;
       color: #58a6ff;
@@ -99,6 +101,9 @@
       left: 20px;
       bottom: 20px;
       z-index: 999;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     #actions button {
@@ -107,11 +112,13 @@
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
-      margin-right: 8px;
+      margin-right: 0;
     }
 
     #exportExcel { background: #28a745; color: white; }
     #clearLogs { background: #dc3545; color: white; }
+    #clearAllLogs { background: #9c2532; color: white; }
+    #resetAllCheckboxes { background: #6f42c1; color: white; }
 
     /* Back button bottom-right */
     #backButton {
@@ -131,13 +138,15 @@
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
   <!-- XLSX for Excel export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
-<body>
+<body class="auth-pending">
 
   <h2>Lịch sử thao tác Checkbox</h2>
 
@@ -157,6 +166,10 @@
       <option value="uncheck">✘ Tắt</option>
     </select>
 
+    <select id="filterUser">
+      <option value="">-- Người dùng --</option>
+    </select>
+
     <input type="date" id="filterDate">
   </div>
 
@@ -164,6 +177,7 @@
   <table id="logTable">
     <tr>
       <th>Thời gian</th>
+      <th>Người dùng</th>
       <th>Kênh</th>
       <th>Boss</th>
       <th>Hành động</th>
@@ -181,28 +195,41 @@
   <div id="actions">
     <button id="exportExcel">Xuất Excel</button>
     <button id="clearLogs">Xóa log cũ hơn 5 tiếng</button>
+    <button id="clearAllLogs">Xóa toàn bộ lịch sử log</button>
+    <button id="resetAllCheckboxes">Reset toàn bộ checkbox</button>
   </div>
 
   <!-- BACK BUTTON BOTTOM-RIGHT -->
   <button id="backButton">Quay lại trang chính</button>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBXdf1nQabS_5tt2gpIxDxo2w14KVsyL8g",
-      authDomain: "boss-tracker-9e069.firebaseapp.com",
-      databaseURL: "https://boss-tracker-9e069-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "boss-tracker-9e069",
-      storageBucket: "boss-tracker-9e069.appspot.com",
-      messagingSenderId: "968667523286",
-      appId: "1:968667523286:web:a8c750376cfe9df7310177"
-    };
+    /* Firebase Config (giữ nguyên index_bug) */
+const firebaseConfig = {
+  apiKey: "AIzaSyD78MgA3rKInTGyAzFW7kmuq-xJENbnqSA",
+  authDomain: "boss-tracker-893f8.firebaseapp.com",
+  databaseURL: "https://boss-tracker-893f8-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "boss-tracker-893f8",
+  storageBucket: "boss-tracker-893f8.firebasestorage.app",
+  messagingSenderId: "279598212615",
+  appId: "1:279598212615:web:d2cf2347c697425f77eca2"
+};
     firebase.initializeApp(firebaseConfig);
+   
+
     const db = firebase.database();
+    firebase.auth().onAuthStateChanged(user => {
+      if (!user || user.isAnonymous) {
+        location.replace("login.html");
+        return;
+      }
+      document.body.classList.remove("auth-pending");
+    });
 
     const logTable = document.getElementById("logTable");
     const filterChannel = document.getElementById("filterChannel");
     const filterBoss = document.getElementById("filterBoss");
     const filterAction = document.getElementById("filterAction");
+    const filterUser = document.getElementById("filterUser");
     const filterDate = document.getElementById("filterDate");
 
     let allLogs = [];
@@ -235,6 +262,7 @@
         if (filterChannel.value && filterChannel.value !== ch) return false;
         if (filterBoss.value && filterBoss.value !== boss) return false;
         if (filterAction.value && filterAction.value !== log.action) return false;
+        if (filterUser.value && filterUser.value !== getUserLabel(log)) return false;
 
         if (filterDate.value) {
           const d = new Date(log.time);
@@ -256,12 +284,14 @@
     function fillFilterOptions() {
       const channels = new Set();
       const bosses = new Set();
+      const users = new Set();
 
       allLogs.forEach(log => {
         const parts = log.id.split("_");
         if (parts.length < 2) return;
         channels.add(parts[0]);
         bosses.add(parts.slice(1).join("_"));
+        users.add(getUserLabel(log));
       });
 
       filterChannel.innerHTML = `<option value="">-- Lọc theo kênh --</option>`;
@@ -269,12 +299,33 @@
 
       filterBoss.innerHTML = `<option value="">-- Lọc theo boss --</option>`;
       bosses.forEach(b => filterBoss.innerHTML += `<option value="${b}">${b}</option>`);
+
+      const selectedUser = filterUser.value;
+      filterUser.innerHTML = `<option value="">-- Người dùng --</option>`;
+      [...users].sort().forEach(user => {
+        const option = document.createElement("option");
+        option.value = user;
+        option.textContent = user;
+        filterUser.appendChild(option);
+      });
+      filterUser.value = selectedUser;
+    }
+
+    function getUserLabel(log) {
+      return log.userName || log.userEmail || (log.userUid ? `UID: ${log.userUid}` : "Unknown");
+    }
+
+    function escapeHtml(value) {
+      const div = document.createElement("div");
+      div.textContent = String(value ?? "");
+      return div.innerHTML;
     }
 
     function renderLogs() {
       logTable.innerHTML = `
         <tr>
           <th>Thời gian</th>
+          <th>Người dùng</th>
           <th>Kênh</th>
           <th>Boss</th>
           <th>Hành động</th>
@@ -295,8 +346,9 @@
         logTable.insertAdjacentHTML("beforeend", `
           <tr>
             <td>${timeStr}</td>
-            <td>${ch}</td>
-            <td>${boss}</td>
+            <td>${escapeHtml(getUserLabel(log))}</td>
+            <td>${escapeHtml(ch)}</td>
+            <td>${escapeHtml(boss)}</td>
             <td class="${log.action}">
               ${log.action === "check" ? "✔ Bật" : "✘ Tắt"}
             </td>
@@ -330,6 +382,7 @@
     filterChannel.onchange =
     filterBoss.onchange =
     filterAction.onchange =
+    filterUser.onchange =
     filterDate.onchange = applyFilters;
 
     /* EXPORT EXCEL */
@@ -347,6 +400,7 @@
 
         return {
           "Thời gian": time.toLocaleString("vi-VN"),
+          "Người dùng": getUserLabel(log),
           "Kênh": ch,
           "Boss": boss,
           "Hành động": log.action === "check" ? "Bật" : "Tắt"
@@ -388,6 +442,44 @@
       });
     });
 
+    /* CLEAR ALL LOGS */
+    document.getElementById("clearAllLogs").addEventListener("click", async () => {
+      if (!confirm("Bạn có chắc muốn xóa TOÀN BỘ lịch sử log? Thao tác này không thể hoàn tác.")) return;
+
+      try {
+        await db.ref("logs").remove();
+        allLogs = [];
+        filteredLogs = [];
+        renderLogs();
+        renderPagination();
+        fillFilterOptions();
+        alert("Đã xóa toàn bộ lịch sử log!");
+      } catch (error) {
+        console.error("Clear all logs failed:", error);
+        alert("Không thể xóa lịch sử log. Vui lòng kiểm tra quyền Firebase.");
+      }
+    });
+
+    /* RESET ALL CHECKBOXES – confirmation code required */
+    document.getElementById("resetAllCheckboxes").addEventListener("click", async () => {
+      const code = prompt("Nhập mã xác nhận để reset toàn bộ checkbox:");
+      if (code === null) return;
+      if (code.trim() !== "OANG") {
+        alert("Mã xác nhận không chính xác!");
+        return;
+      }
+
+      if (!confirm("Mã hợp lệ. Bạn có chắc muốn reset toàn bộ checkbox trên tất cả channel?")) return;
+
+      try {
+        await db.ref("timers").remove();
+        alert("Đã reset toàn bộ checkbox!");
+      } catch (error) {
+        console.error("Reset all checkboxes failed:", error);
+        alert("Không thể reset checkbox. Vui lòng kiểm tra quyền Firebase.");
+      }
+    });
+
     /* BACK BUTTON */
     document.getElementById("backButton").addEventListener("click", () => {
       window.location.href = "index.html";
@@ -396,6 +488,8 @@
 
 </body>
 </html>
+
+
 
 
 

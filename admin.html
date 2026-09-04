@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phân quyền – Boss Tracker</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; font-family: Arial, sans-serif; background: #0d1117; color: #e6edf3; }
+    body.auth-pending > * { visibility: hidden; }
+    .wrap { max-width: 920px; margin: auto; }
+    h1 { color: #58a6ff; margin: 0 0 8px; }
+    .note { color: #9fb0c3; margin-bottom: 22px; }
+    .card { background: #151b23; border: 1px solid #2b4058; border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 8px 25px rgba(0,0,0,.25); }
+    label { display: block; color: #9fb0c3; font-size: 13px; margin-bottom: 6px; }
+    input[type="text"], select { width: 100%; padding: 10px 12px; background: #0d1117; color: #fff; border: 1px solid #3d5874; border-radius: 7px; }
+    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+    .bosses { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: 10px; margin-top: 16px; }
+    .bosses label { display: flex; align-items: center; gap: 8px; padding: 9px; background: #0d1117; border: 1px solid #2b4058; border-radius: 7px; color: #e6edf3; cursor: pointer; }
+    button { border: 0; border-radius: 7px; padding: 10px 15px; color: #fff; font-weight: 700; cursor: pointer; }
+    #save { background: #238636; margin-top: 16px; }
+    #load { background: #1f6feb; }
+    #back { background: #6e7681; }
+    .actions { display: flex; gap: 10px; align-items: end; }
+    #status { min-height: 20px; margin-top: 12px; color: #79c0ff; }
+    code { color: #ffa657; }
+    @media (max-width: 650px) { body { padding: 15px; } .grid { grid-template-columns: 1fr; } }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+</head>
+<body class="auth-pending">
+  <main class="wrap">
+    <h1>Phân quyền người dùng</h1>
+    <p class="note">Nhập Firebase UID của tài khoản. UID có tại Firebase Console → Authentication → Users.</p>
+    <section class="card">
+      <div class="grid">
+        <div>
+          <label for="uid">Firebase UID</label>
+          <input id="uid" type="text" autocomplete="off" placeholder="Dán UID người dùng">
+        </div>
+        <div>
+          <label for="role">Vai trò</label>
+          <select id="role"><option value="user">User</option><option value="admin">Admin</option></select>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button id="load" type="button">TẢI QUYỀN HIỆN TẠI</button>
+        <button id="back" type="button">QUAY LẠI</button>
+      </div>
+      <div id="bosses" class="bosses"></div>
+      <button id="save" type="button">LƯU PHÂN QUYỀN</button>
+      <div id="status" role="status"></div>
+    </section>
+    <section class="card note">
+      Admin được xem tất cả boss, trang Log và các nút quản trị. User chỉ thấy boss được đánh dấu. Không xóa UID admin đang sử dụng trong mục <code>users</code>.
+    </section>
+  </main>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyD78MgA3rKInTGyAzFW7kmuq-xJENbnqSA",
+      authDomain: "boss-tracker-893f8.firebaseapp.com",
+      databaseURL: "https://boss-tracker-893f8-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "boss-tracker-893f8",
+      storageBucket: "boss-tracker-893f8.firebasestorage.app",
+      messagingSenderId: "279598212615",
+      appId: "1:279598212615:web:d2cf2347c697425f77eca2"
+    });
+    const db = firebase.database();
+    const bossNames = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
+    const uidInput = document.getElementById("uid");
+    const roleInput = document.getElementById("role");
+    const statusBox = document.getElementById("status");
+    const bossesBox = document.getElementById("bosses");
+
+    bossNames.forEach(name => {
+      const label = document.createElement("label");
+      const box = document.createElement("input");
+      box.type = "checkbox"; box.value = name;
+      label.append(box, document.createTextNode(name));
+      bossesBox.appendChild(label);
+    });
+
+    firebase.auth().onAuthStateChanged(async user => {
+      if (!user || user.isAnonymous) return location.replace("login.html");
+      try {
+        const profile = (await db.ref("users/" + user.uid).once("value")).val() || {};
+        if (profile.role !== "admin") return location.replace("index.html");
+        document.body.classList.remove("auth-pending");
+      } catch (e) { location.replace("index.html"); }
+    });
+
+    function setStatus(text, error = false) {
+      statusBox.textContent = text;
+      statusBox.style.color = error ? "#ff7b72" : "#79c0ff";
+    }
+
+    document.getElementById("load").onclick = async () => {
+      const uid = uidInput.value.trim();
+      if (!uid) return setStatus("Vui lòng nhập UID.", true);
+      try {
+        const profile = (await db.ref("users/" + uid).once("value")).val() || {};
+        roleInput.value = profile.role === "admin" ? "admin" : "user";
+        bossesBox.querySelectorAll("input").forEach(box => box.checked = !!(profile.allowedBosses && profile.allowedBosses[box.value]));
+        setStatus(profile.role ? "Đã tải quyền hiện tại." : "UID chưa có cấu hình. Hãy chọn quyền và bấm Lưu.");
+      } catch (e) { setStatus("Không thể tải dữ liệu. Kiểm tra Firebase Rules.", true); }
+    };
+
+    document.getElementById("save").onclick = async () => {
+      const uid = uidInput.value.trim();
+      if (!uid) return setStatus("Vui lòng nhập UID.", true);
+      const allowedBosses = {};
+      bossesBox.querySelectorAll("input:checked").forEach(box => allowedBosses[box.value] = true);
+      try {
+        await db.ref("users/" + uid).set({ role: roleInput.value, allowedBosses, updatedAt: firebase.database.ServerValue.TIMESTAMP });
+        setStatus("Đã lưu phân quyền thành công.");
+      } catch (e) { setStatus("Không thể lưu. Kiểm tra quyền Admin trong Firebase Rules.", true); }
+    };
+
+    document.getElementById("back").onclick = () => location.href = "index.html";
+  </script>
+</body>
+</html>
