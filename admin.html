@@ -33,7 +33,7 @@
     .badge { display: inline-block; padding: 3px 7px; margin: 2px 3px 2px 0; border-radius: 10px; background: #263b50; font-size: 12px; }
     .role-admin { color: #d2a8ff; font-weight: 700; }
     .empty { color: #8b949e; }
-    .boss-admin-grid { display:grid; grid-template-columns:2fr repeat(5,1fr); gap:8px; align-items:end; }
+    .boss-admin-grid { display:grid; grid-template-columns:2fr repeat(6,1fr); gap:8px; align-items:end; }
     .boss-admin-grid input { width:100%; padding:9px; background:#0d1117; color:#fff; border:1px solid #3d5874; border-radius:7px; }
     .boss-config-list { margin-top:14px; width:100%; border-collapse:collapse; }
     .boss-config-list th, .boss-config-list td { padding:9px; border-bottom:1px solid #2b4058; text-align:left; }
@@ -97,9 +97,10 @@
     </section>
     <section class="card">
       <h2>Quản lý loại Boss</h2>
-      <p class="note">Chọn boss trong bảng để sửa. Tên boss không thể đổi trực tiếp; hãy xóa và tạo lại nếu cần đổi tên.</p>
+      <p class="note">Chọn boss trong bảng để sửa tên, thông số hoặc vị trí. Vị trí 1 là tab đầu tiên.</p>
       <div class="boss-admin-grid">
         <div><label>Tên Boss</label><input id="bossName" type="text" placeholder="Tên boss mới"></div>
+        <div><label>Vị trí</label><input id="bossPosition" type="number" min="1" value="1"></div>
         <div><label>Hồi (phút)</label><input id="durationMinutes" type="number" min="1" value="240"></div>
         <div><label>SOS (phút)</label><input id="sosMinutes" type="number" min="0" value="5"></div>
         <div><label>Xanh dương đầu (phút)</label><input id="blueMinutes" type="number" min="0" value="5"></div>
@@ -112,7 +113,7 @@
         <button id="deleteBoss" class="danger" type="button">XÓA BOSS ĐANG CHỌN</button>
       </div>
       <table class="boss-config-list">
-        <thead><tr><th>Boss</th><th>Hồi</th><th>SOS</th><th>Xanh dương đầu</th><th>Vàng</th><th>Đỏ</th></tr></thead>
+        <thead><tr><th>Vị trí</th><th>Boss</th><th>Hồi</th><th>SOS</th><th>Xanh dương đầu</th><th>Vàng</th><th>Đỏ</th></tr></thead>
         <tbody id="bossConfigList"></tbody>
       </table>
       <div id="bossStatus" role="status"></div>

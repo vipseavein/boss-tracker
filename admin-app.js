@@ -83,20 +83,35 @@ roleInput.onchange=()=>{const a=roleInput.value==="admin", x=document.getElement
 function field(id){return document.getElementById(id);}
 function renderBossConfigs(){
   const body=field("bossConfigList");body.innerHTML="";
-  Object.values(bossConfigs).filter(Boolean).sort((a,b)=>(a.order??9999)-(b.order??9999)).forEach(c=>{
-    const row=document.createElement("tr");row.className="user-row";row.innerHTML=`<td></td><td>${c.durationMinutes} phút</td><td>${c.sosMinutes} phút</td><td>${c.blueMinutes} phút</td><td>${c.yellowMinutes} phút</td><td>${c.redMinutes} phút</td>`;row.cells[0].textContent=c.name;row.onclick=()=>selectBoss(c.name);body.appendChild(row);
+  Object.values(bossConfigs).filter(Boolean).sort((a,b)=>(a.order??9999)-(b.order??9999)).forEach((c,index)=>{
+    const row=document.createElement("tr");row.className="user-row";row.innerHTML=`<td>${index+1}</td><td></td><td>${c.durationMinutes} phút</td><td>${c.sosMinutes} phút</td><td>${c.blueMinutes} phút</td><td>${c.yellowMinutes} phút</td><td>${c.redMinutes} phút</td>`;row.cells[1].textContent=c.name;row.onclick=()=>selectBoss(c.name);body.appendChild(row);
   });
 }
-function selectBoss(name){const c=bossConfigs[name];if(!c)return;selectedBossName=name;["bossName","durationMinutes","sosMinutes","blueMinutes","yellowMinutes","redMinutes"].forEach(id=>field(id).value=id==="bossName"?c.name:c[id]);field("bossName").disabled=true;}
-function resetBossForm(){selectedBossName="";field("bossName").disabled=false;field("bossName").value="";field("durationMinutes").value=240;field("sosMinutes").value=5;field("blueMinutes").value=5;field("yellowMinutes").value=5;field("redMinutes").value=3;}
+function selectBoss(name){const c=bossConfigs[name];if(!c)return;selectedBossName=name;field("bossName").value=c.name;field("bossPosition").value=Object.values(bossConfigs).filter(Boolean).sort((a,b)=>(a.order??9999)-(b.order??9999)).findIndex(x=>x.name===name)+1;["durationMinutes","sosMinutes","blueMinutes","yellowMinutes","redMinutes"].forEach(id=>field(id).value=c[id]);field("bossName").disabled=false;}
+function resetBossForm(){selectedBossName="";field("bossName").disabled=false;field("bossName").value="";field("bossPosition").value=Object.keys(bossConfigs).length+1;field("durationMinutes").value=240;field("sosMinutes").value=5;field("blueMinutes").value=5;field("yellowMinutes").value=5;field("redMinutes").value=3;}
 field("newBoss").onclick=resetBossForm;
 field("saveBoss").onclick=async()=>{
   const name=field("bossName").value.trim(); if(!name||/[.#$\[\]\/]/.test(name))return field("bossStatus").textContent="Tên boss trống hoặc chứa ký tự không hợp lệ: . # $ [ ] /";
-  const cfg={name,order:selectedBossName?(bossConfigs[name]?.order??9999):Object.keys(bossConfigs).length,durationMinutes:+field("durationMinutes").value,sosMinutes:+field("sosMinutes").value,blueMinutes:+field("blueMinutes").value,yellowMinutes:+field("yellowMinutes").value,redMinutes:+field("redMinutes").value};
+  if(selectedBossName!==name&&bossConfigs[name])return field("bossStatus").textContent="Tên boss này đã tồn tại.";
+  const cfg={name,order:0,durationMinutes:+field("durationMinutes").value,sosMinutes:+field("sosMinutes").value,blueMinutes:+field("blueMinutes").value,yellowMinutes:+field("yellowMinutes").value,redMinutes:+field("redMinutes").value};
   if(cfg.durationMinutes<1||cfg.redMinutes>cfg.yellowMinutes||cfg.yellowMinutes>cfg.durationMinutes||cfg.blueMinutes>cfg.durationMinutes)return field("bossStatus").textContent="Thông số không hợp lệ. Đỏ phải ≤ Vàng và các mốc không vượt thời gian hồi.";
-  await db.ref("bossConfigs/"+name).set(cfg);field("bossStatus").textContent="Đã lưu cấu hình boss.";selectBoss(name);
+  const oldName=selectedBossName;
+  const ordered=Object.values(bossConfigs).filter(c=>c&&c.name!==oldName&&c.name!==name).sort((a,b)=>(a.order??9999)-(b.order??9999));
+  const target=Math.max(0,Math.min(ordered.length,(parseInt(field("bossPosition").value,10)||ordered.length+1)-1));
+  ordered.splice(target,0,cfg);
+  const updates={};
+  ordered.forEach((item,index)=>updates[`bossConfigs/${item.name}`]={...item,order:index});
+  if(oldName&&oldName!==name){
+    updates[`bossConfigs/${oldName}`]=null;
+    Object.entries(permissionsData).forEach(([uid,p])=>{if(p?.allowedBosses?.[oldName]){updates[`users/${uid}/allowedBosses/${oldName}`]=null;updates[`users/${uid}/allowedBosses/${name}`]=true;}});
+    const [timerSnap,colorSnap,logSnap]=await Promise.all([db.ref("timers").once("value"),db.ref("colors").once("value"),db.ref("logs").once("value")]);
+    Object.entries(timerSnap.val()||{}).forEach(([id,value])=>{const boss=value?.boss||id.split("_").slice(1).join("_");if(boss===oldName){const channel=id.split("_")[0],newId=`${channel}_${name}`;updates[`timers/${id}`]=null;updates[`timers/${newId}`]={...value,boss:name};}});
+    Object.entries(colorSnap.val()||{}).forEach(([id,value])=>{const boss=value?.boss||id.split("_").slice(1).join("_");if(boss===oldName){const channel=id.split("_")[0],newId=`${channel}_${name}`;updates[`colors/${id}`]=null;updates[`colors/${newId}`]=typeof value==="object"?{...value,boss:name}:{active:true,boss:name};}});
+    Object.entries(logSnap.val()||{}).forEach(([key,value])=>{const boss=value?.boss||value?.id?.split("_").slice(1).join("_");if(boss===oldName){updates[`logs/${key}/boss`]=name;if(value.id)updates[`logs/${key}/id`]=`${value.id.split("_")[0]}_${name}`;}});
+  }
+  await db.ref().update(updates);selectedBossName=name;field("bossStatus").textContent=oldName&&oldName!==name?"Đã đổi tên, chuyển dữ liệu và cập nhật vị trí boss.":"Đã lưu cấu hình và vị trí boss.";selectBoss(name);
 };
-field("deleteBoss").onclick=async()=>{if(!selectedBossName)return field("bossStatus").textContent="Hãy chọn boss cần xóa.";if(!confirm(`Xóa boss ${selectedBossName}? Các timer hiện có của boss này sẽ không còn hiển thị.`))return;await db.ref("bossConfigs/"+selectedBossName).remove();field("bossStatus").textContent="Đã xóa boss.";resetBossForm();};
+field("deleteBoss").onclick=async()=>{if(!selectedBossName)return field("bossStatus").textContent="Hãy chọn boss cần xóa.";if(!confirm(`Xóa boss ${selectedBossName}? Các timer hiện có của boss này sẽ không còn hiển thị.`))return;const remaining=Object.values(bossConfigs).filter(c=>c&&c.name!==selectedBossName).sort((a,b)=>(a.order??9999)-(b.order??9999)),updates={[`bossConfigs/${selectedBossName}`]:null};remaining.forEach((c,i)=>updates[`bossConfigs/${c.name}/order`]=i);await db.ref().update(updates);field("bossStatus").textContent="Đã xóa boss và chuẩn hóa lại thứ tự.";resetBossForm();};
 
 document.getElementById("adminBack").onclick=()=>location.href="index.html";
 document.getElementById("adminLog").onclick=()=>location.href="log.html";
