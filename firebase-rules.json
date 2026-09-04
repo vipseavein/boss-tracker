@@ -18,7 +18,7 @@
     },
     "timers": {
       ".read": "auth != null",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('logAccess').val() === 'full')",
       "$timerId": {
         ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('allowedBosses').child(newData.child('boss').val()).val() === true || (!newData.exists() && root.child('users').child(auth.uid).child('allowedBosses').child(data.child('boss').val()).val() === true))"
       }
@@ -31,11 +31,15 @@
       }
     },
     "logs": {
-      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('canViewLogs').val() === true)",
-      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('logAccess').val() === 'view' || root.child('users').child(auth.uid).child('logAccess').val() === 'full')",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('logAccess').val() === 'full')",
       "$logId": {
         ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (newData.child('userUid').val() === auth.uid && root.child('users').child(auth.uid).child('allowedBosses').child(newData.child('boss').val()).val() === true))"
       }
+    },
+    "bossConfigs": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
     }
   }
 }

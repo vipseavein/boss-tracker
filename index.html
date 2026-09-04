@@ -303,8 +303,8 @@
 <button id="logoutButton">LOG OUT</button>
 <div id="columnSelector"></div>
 
-<script>
-/* ====== PHẦN JS + TỐI ƯU NHẸ ====== */
+<script type="text/plain" id="legacyIndexScript">
+/* ====== LEGACY SCRIPT - DISABLED ====== */
 
 /* ---------- THEME ---------- */
 const themeToggle = document.getElementById("themeToggle");
@@ -800,6 +800,7 @@ db.ref("colors").on("child_added", s => {
   
 db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classList.remove("right-clicked"));
 </script>
+<script src="index-app.js"></script>
 
 </body>
 </html>

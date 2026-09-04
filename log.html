@@ -135,6 +135,7 @@
       box-shadow: 0 0 10px rgba(255,152,0,0.4);
       z-index: 999;
     }
+    #adminButton { position:fixed; right:20px; bottom:60px; padding:6px 12px; background:#6f42c1; border:0; border-radius:6px; color:#fff; font-weight:bold; cursor:pointer; z-index:999; display:none; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -201,6 +202,7 @@
 
   <!-- BACK BUTTON BOTTOM-RIGHT -->
   <button id="backButton">Quay lại trang chính</button>
+  <button id="adminButton">PHÂN QUYỀN</button>
 
   <script>
     /* Firebase Config (giữ nguyên index_bug) */
@@ -226,10 +228,12 @@ const firebaseConfig = {
       try {
         const profile = (await db.ref("users/" + user.uid).once("value")).val() || {};
         logPageIsAdmin = profile.role === "admin";
-        if (!logPageIsAdmin && profile.canViewLogs !== true) { location.replace("index.html"); return; }
+        const access = logPageIsAdmin ? "full" : (profile.logAccess || (profile.canViewLogs === true ? "view" : "none"));
+        if (access === "none") { location.replace("index.html"); return; }
         ["clearLogs", "clearAllLogs", "resetAllCheckboxes"].forEach(id => {
-          document.getElementById(id).style.display = logPageIsAdmin ? "inline-block" : "none";
+          document.getElementById(id).style.display = access === "full" ? "inline-block" : "none";
         });
+        document.getElementById("adminButton").style.display = logPageIsAdmin ? "block" : "none";
       } catch (error) { location.replace("index.html"); return; }
       document.body.classList.remove("auth-pending");
     });
@@ -493,11 +497,13 @@ const firebaseConfig = {
     document.getElementById("backButton").addEventListener("click", () => {
       window.location.href = "index.html";
     });
+    document.getElementById("adminButton").addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
   </script>
 
 </body>
 </html>
-
 
 
 

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Phân quyền – Boss Tracker</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; padding: 28px; font-family: Arial, sans-serif; background: #0d1117; color: #e6edf3; }
@@ -32,6 +33,11 @@
     .badge { display: inline-block; padding: 3px 7px; margin: 2px 3px 2px 0; border-radius: 10px; background: #263b50; font-size: 12px; }
     .role-admin { color: #d2a8ff; font-weight: 700; }
     .empty { color: #8b949e; }
+    .boss-admin-grid { display:grid; grid-template-columns:2fr repeat(5,1fr); gap:8px; align-items:end; }
+    .boss-admin-grid input { width:100%; padding:9px; background:#0d1117; color:#fff; border:1px solid #3d5874; border-radius:7px; }
+    .boss-config-list { margin-top:14px; width:100%; border-collapse:collapse; }
+    .boss-config-list th, .boss-config-list td { padding:9px; border-bottom:1px solid #2b4058; text-align:left; }
+    .danger { background:#b4232f; }
     .admin-controls { position: fixed; right: 20px; bottom: 20px; z-index: 999; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
     .admin-controls button { min-width: 105px; box-shadow: 0 0 10px rgba(0,0,0,.3); }
     #adminBack { background: #ff9800; }
@@ -77,12 +83,39 @@
       <div class="actions" style="margin-top:12px">
         <button id="load" type="button">TẢI BẰNG UID</button>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;margin-top:16px;color:#e6edf3">
-        <input id="canViewLogs" type="checkbox"> Cho phép người dùng xem trang Log
-      </label>
+      <div style="margin-top:16px;max-width:280px">
+        <label for="logAccess">Quyền sử dụng trang Log</label>
+        <select id="logAccess">
+          <option value="none">Không có quyền</option>
+          <option value="view">Chỉ xem</option>
+          <option value="full">Full chức năng</option>
+        </select>
+      </div>
       <div id="bosses" class="bosses"></div>
       <button id="save" type="button">LƯU PHÂN QUYỀN</button>
       <div id="status" role="status"></div>
+    </section>
+    <section class="card">
+      <h2>Quản lý loại Boss</h2>
+      <p class="note">Chọn boss trong bảng để sửa. Tên boss không thể đổi trực tiếp; hãy xóa và tạo lại nếu cần đổi tên.</p>
+      <div class="boss-admin-grid">
+        <div><label>Tên Boss</label><input id="bossName" type="text" placeholder="Tên boss mới"></div>
+        <div><label>Hồi (phút)</label><input id="durationMinutes" type="number" min="1" value="240"></div>
+        <div><label>SOS (phút)</label><input id="sosMinutes" type="number" min="0" value="5"></div>
+        <div><label>Xanh dương đầu (phút)</label><input id="blueMinutes" type="number" min="0" value="5"></div>
+        <div><label>Vàng khi còn (phút)</label><input id="yellowMinutes" type="number" min="0" value="5"></div>
+        <div><label>Đỏ khi còn (phút)</label><input id="redMinutes" type="number" min="0" value="3"></div>
+      </div>
+      <div class="actions" style="margin-top:12px">
+        <button id="saveBoss" type="button" style="background:#238636">THÊM / LƯU BOSS</button>
+        <button id="newBoss" type="button" style="background:#1f6feb">BOSS MỚI</button>
+        <button id="deleteBoss" class="danger" type="button">XÓA BOSS ĐANG CHỌN</button>
+      </div>
+      <table class="boss-config-list">
+        <thead><tr><th>Boss</th><th>Hồi</th><th>SOS</th><th>Xanh dương đầu</th><th>Vàng</th><th>Đỏ</th></tr></thead>
+        <tbody id="bossConfigList"></tbody>
+      </table>
+      <div id="bossStatus" role="status"></div>
     </section>
     <section class="card note">
       Admin được xem tất cả boss, trang Log và các nút quản trị. User chỉ thấy boss được đánh dấu. Không xóa UID admin đang sử dụng trong mục <code>users</code>.
@@ -94,7 +127,7 @@
     <button id="themeToggle" type="button">LIGHT MODE</button>
     <button id="adminLogout" type="button">LOG OUT</button>
   </div>
-  <script>
+  <script type="text/plain" id="legacyAdminScript">
     firebase.initializeApp({
       apiKey: "AIzaSyD78MgA3rKInTGyAzFW7kmuq-xJENbnqSA",
       authDomain: "boss-tracker-893f8.firebaseapp.com",
@@ -247,5 +280,6 @@
       applyTheme(mode);
     };
   </script>
+  <script src="admin-app.js"></script>
 </body>
 </html>
