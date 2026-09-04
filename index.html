@@ -283,6 +283,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="i18n.js?v=6.7"></script>
 
 </head>
 
@@ -800,8 +801,7 @@ db.ref("colors").on("child_added", s => {
   
 db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classList.remove("right-clicked"));
 </script>
-<script src="index-app.js?v=6.4"></script>
-<script src="i18n.js?v=6.6"></script>
+<script src="index-app.js?v=6.7"></script>
 
 </body>
 </html>

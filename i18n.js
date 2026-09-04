@@ -46,8 +46,38 @@
     ]}
   };
 
+  const extra = {
+    en: {"Đang tải...":"Loading...","Chưa có email":"Email unavailable","Chưa được cấp boss":"No boss assigned","Tất cả boss":"All bosses","Được xem":"Allowed","Không":"No","Đã lưu phân quyền.":"Permissions saved.","Vui lòng chọn người dùng.":"Please select a user.","Vui lòng nhập UID.":"Please enter a UID.","Tên boss này đã tồn tại.":"This boss name already exists.","Đã lưu cấu hình và vị trí boss.":"Boss settings and position saved.","Đã đổi tên, chuyển dữ liệu và cập nhật vị trí boss.":"Boss renamed; data and position updated.","Hãy chọn boss cần xóa.":"Select a boss to delete.","Đã xóa boss và chuẩn hóa lại thứ tự.":"Boss deleted and order normalized.","Không có dữ liệu để xuất!":"No data to export!","Đã xóa log cũ hơn 5 tiếng!":"Logs older than 5 hours deleted!","Đã xóa toàn bộ lịch sử log!":"All logs deleted!","Mã xác nhận không chính xác!":"Incorrect confirmation code!","Đã reset toàn bộ checkbox!":"All checkboxes reset!"},
+    ph: {"Đang tải...":"Naglo-load...","Chưa có email":"Walang email","Chưa được cấp boss":"Walang assigned boss","Tất cả boss":"Lahat ng boss","Được xem":"Pinapayagan","Không":"Hindi","Đã lưu phân quyền.":"Nai-save ang permissions.","Vui lòng chọn người dùng.":"Pumili ng user.","Vui lòng nhập UID.":"Ilagay ang UID.","Tên boss này đã tồn tại.":"May ganitong pangalan na ng boss.","Đã lưu cấu hình và vị trí boss.":"Nai-save ang settings at posisyon.","Đã đổi tên, chuyển dữ liệu và cập nhật vị trí boss.":"Napaltan ang pangalan at nailipat ang data.","Hãy chọn boss cần xóa.":"Piliin ang boss na buburahin.","Đã xóa boss và chuẩn hóa lại thứ tự.":"Nabura ang boss at naayos ang order.","Không có dữ liệu để xuất!":"Walang data na mae-export!","Đã xóa log cũ hơn 5 tiếng!":"Nabura ang logs na lampas 5 oras!","Đã xóa toàn bộ lịch sử log!":"Nabura ang lahat ng logs!","Mã xác nhận không chính xác!":"Maling confirmation code!","Đã reset toàn bộ checkbox!":"Na-reset ang lahat ng checkbox!"},
+    br: {"Đang tải...":"Carregando...","Chưa có email":"Email indisponível","Chưa được cấp boss":"Nenhum boss permitido","Tất cả boss":"Todos os bosses","Được xem":"Permitido","Không":"Não","Đã lưu phân quyền.":"Permissões salvas.","Vui lòng chọn người dùng.":"Selecione um usuário.","Vui lòng nhập UID.":"Digite o UID.","Tên boss này đã tồn tại.":"Este nome de boss já existe.","Đã lưu cấu hình và vị trí boss.":"Configuração e posição salvas.","Đã đổi tên, chuyển dữ liệu và cập nhật vị trí boss.":"Boss renomeado; dados e posição atualizados.","Hãy chọn boss cần xóa.":"Selecione o boss que deseja excluir.","Đã xóa boss và chuẩn hóa lại thứ tự.":"Boss excluído e ordem normalizada.","Không có dữ liệu để xuất!":"Não há dados para exportar!","Đã xóa log cũ hơn 5 tiếng!":"Logs com mais de 5 horas excluídos!","Đã xóa toàn bộ lịch sử log!":"Todos os logs foram excluídos!","Mã xác nhận không chính xác!":"Código de confirmação incorreto!","Đã reset toàn bộ checkbox!":"Todos os checkboxes foram resetados!"}
+  };
+  Object.keys(extra).forEach(lang=>Object.assign(dictionaries[lang],extra[lang]));
+
+  const dynamicMessages = {
+    vi: { greeting:"Xin chào", channel:"Kênh", remaining:"Còn", page:"Trang", minutes:"phút", resetConfirm:"Bạn có muốn reset time boss?", minutePrompt:"Nhập số PHÚT muốn đếm ngược:", invalidMinutes:"Vui lòng nhập số phút hợp lệ!" },
+    en: { greeting:"Hello", channel:"Channel", remaining:"Remaining", page:"Page", minutes:"minutes", resetConfirm:"Do you want to reset this boss timer?", minutePrompt:"Enter the countdown time in MINUTES:", invalidMinutes:"Please enter a valid number of minutes!" },
+    ph: { greeting:"Kamusta", channel:"Channel", remaining:"Natitira", page:"Pahina", minutes:"minuto", resetConfirm:"I-reset ang timer ng boss na ito?", minutePrompt:"Ilagay ang countdown sa MINUTO:", invalidMinutes:"Maglagay ng wastong bilang ng minuto!" },
+    br: { greeting:"Olá", channel:"Canal", remaining:"Restante", page:"Página", minutes:"minutos", resetConfirm:"Deseja resetar o timer deste boss?", minutePrompt:"Digite o tempo em MINUTOS:", invalidMinutes:"Digite uma quantidade válida de minutos!" }
+  };
+
   let applying = false;
   function language() { return localStorage.getItem("bossTrackerLanguage") || "vi"; }
+  function t(key, vars={}) {
+    let value=(dynamicMessages[language()]||dynamicMessages.vi)[key]||key;
+    Object.entries(vars).forEach(([name,replacement])=>value=value.replaceAll(`{${name}}`,replacement));
+    return value;
+  }
+  function translateDynamic(source) {
+    const lang=language(), m=dynamicMessages[lang]||dynamicMessages.vi;
+    let match=source.match(/^Kênh (\d+) - Boss (.+) - Còn (.+)$/);
+    if(match)return `${m.channel} ${match[1]} - Boss ${match[2]} - ${m.remaining} ${match[3]}`;
+    match=source.match(/^Kênh (\d+)$/);if(match)return `${m.channel} ${match[1]}`;
+    match=source.match(/^Trang (\d+) \/ (\d+)$/);if(match)return `${m.page} ${match[1]} / ${match[2]}`;
+    match=source.match(/^(\d+) phút$/);if(match)return `${match[1]} ${m.minutes}`;
+    match=source.match(/^Xóa boss (.+)\? Các timer hiện có của boss này sẽ không còn hiển thị\.$/);
+    if(match){if(lang==="en")return `Delete boss ${match[1]}? Its current timers will no longer be displayed.`;if(lang==="ph")return `Burahin ang boss ${match[1]}? Hindi na makikita ang kasalukuyang timers nito.`;if(lang==="br")return `Excluir o boss ${match[1]}? Os timers atuais não serão mais exibidos.`;}
+    return (dictionaries[lang]||{})[source]||source;
+  }
   function translate(root=document) {
     if (applying) return; applying=true;
     const lang=language(), dict=dictionaries[lang]||{};
@@ -55,7 +85,7 @@
       if (el.children.length) return;
       const source=el.dataset.i18nSource || el.textContent.trim();
       if(!el.dataset.i18nSource) el.dataset.i18nSource=source;
-      const translated=dict[source]||source;
+      const translated=translateDynamic(source);
       if(el.textContent!==translated) el.textContent=translated;
     });
     root.querySelectorAll("input[placeholder]").forEach(el=>{const source=el.dataset.i18nPlaceholder||el.placeholder;if(!el.dataset.i18nPlaceholder)el.dataset.i18nPlaceholder=source;const translated=dict[source]||source;if(el.placeholder!==translated)el.placeholder=translated;});
@@ -69,12 +99,16 @@
     document.getElementById("btHelpModal").classList.add("show");
   }
   function init(){
+    const nativeAlert=window.alert.bind(window),nativeConfirm=window.confirm.bind(window),nativePrompt=window.prompt.bind(window);
+    window.alert=message=>nativeAlert(translateDynamic(String(message)));
+    window.confirm=message=>nativeConfirm(translateDynamic(String(message)));
+    window.prompt=(message,value)=>value===undefined?nativePrompt(translateDynamic(String(message))):nativePrompt(translateDynamic(String(message)),value);
     const style=document.createElement("style");style.textContent=`#btLanguageTools{position:fixed;top:14px;right:16px;z-index:10000;display:flex;gap:6px;align-items:center}#btLanguageTools select,#btLanguageTools button{height:34px;border:1px solid #47709a;border-radius:7px;background:#101720;color:#fff;font-weight:700;padding:0 9px;box-shadow:0 3px 12px #0005}#btLanguageTools button{width:34px;padding:0;font-size:17px;background:#1f6feb}#btHelpModal{display:none;position:fixed;inset:0;z-index:20000;background:#000b;padding:30px;overflow:auto}#btHelpModal.show{display:flex}#btHelpPanel{width:min(760px,100%);max-height:90vh;overflow:auto;margin:auto;background:#151b23;color:#e6edf3;border:1px solid #3c5875;border-radius:14px;padding:22px;box-shadow:0 20px 70px #000}#btHelpHead{display:flex;justify-content:space-between;gap:15px;align-items:center;position:sticky;top:-22px;background:#151b23;padding:10px 0}#btHelpHead h2{margin:0;color:#58a6ff}#btHelpClose{border:0;border-radius:7px;background:#dc3545;color:#fff;width:34px;height:34px;font-size:20px;cursor:pointer}#btHelpBody section{border-top:1px solid #2f4358;padding:13px 0}#btHelpBody h3{margin:0 0 6px;color:#79c0ff}#btHelpBody p{margin:0;line-height:1.55;color:#c9d1d9}@media(max-width:600px){#btHelpModal{padding:10px}#btLanguageTools{top:8px;right:8px}}`;document.head.appendChild(style);
     const tools=document.createElement("div");tools.id="btLanguageTools";tools.innerHTML=`<select aria-label="Language"><option value="vi">Việt</option><option value="en">ENG</option><option value="ph">PH</option><option value="br">BR</option></select><button type="button" aria-label="Help">?</button>`;document.body.appendChild(tools);
     const modal=document.createElement("div");modal.id="btHelpModal";modal.innerHTML=`<div id="btHelpPanel"><div id="btHelpHead"><h2 id="btHelpTitle"></h2><button id="btHelpClose" type="button">×</button></div><div id="btHelpBody"></div></div>`;document.body.appendChild(modal);
-    const select=tools.querySelector("select");select.value=language();select.onchange=()=>{localStorage.setItem("bossTrackerLanguage",select.value);translate();if(modal.classList.contains("show"))showHelp();};tools.querySelector("button").onclick=showHelp;document.getElementById("btHelpClose").onclick=()=>modal.classList.remove("show");modal.onclick=e=>{if(e.target===modal)modal.classList.remove("show");};document.addEventListener("keydown",e=>{if(e.key==="Escape")modal.classList.remove("show");});
+    const select=tools.querySelector("select");select.value=language();select.onchange=()=>{localStorage.setItem("bossTrackerLanguage",select.value);translate();window.dispatchEvent(new CustomEvent("bosslanguagechange"));if(modal.classList.contains("show"))showHelp();};tools.querySelector("button").onclick=showHelp;document.getElementById("btHelpClose").onclick=()=>modal.classList.remove("show");modal.onclick=e=>{if(e.target===modal)modal.classList.remove("show");};document.addEventListener("keydown",e=>{if(e.key==="Escape")modal.classList.remove("show");});
     translate();new MutationObserver(m=>{if(!applying)translate();}).observe(document.body,{childList:true,subtree:true});
   }
-  window.BT_I18N={translate,language};
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+  window.BT_I18N={translate,language,t,translateDynamic};
+  if(document.body)init();else document.addEventListener("DOMContentLoaded",init,{once:true});
 })();

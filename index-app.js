@@ -28,6 +28,7 @@ let visibleBosses = [];
 let timersData = {};
 let serverOffset = 0;
 let globalTick = null;
+const tr = (key, vars={}) => window.BT_I18N?.t(key, vars) || key;
 
 function isAdmin() { return currentProfile.role === "admin"; }
 function logAccess() {
@@ -83,7 +84,7 @@ auth.onAuthStateChanged(async user => {
 
   const displayName = user.displayName || user.email?.split("@")[0] || "User";
   document.getElementById("userGreeting").innerHTML = "";
-  document.getElementById("userGreeting").append("Xin chào “", Object.assign(document.createElement("strong"), { textContent: displayName }), "”");
+  document.getElementById("userGreeting").append(tr("greeting") + " “", Object.assign(document.createElement("strong"), { textContent: displayName }), "”");
   document.getElementById("logButton").style.display = logAccess() !== "none" ? "block" : "none";
   document.getElementById("adminButton").style.display = isAdmin() ? "block" : "none";
   buildInterface();
@@ -120,7 +121,7 @@ function buildInterface() {
   columnSelector.innerHTML = "";
   const header = table.insertRow();
   const channelHead = document.createElement("th");
-  channelHead.className = "channel-col"; channelHead.textContent = "Channel"; header.appendChild(channelHead);
+    channelHead.className = "channel-col"; channelHead.textContent = tr("channel"); header.appendChild(channelHead);
 
   const saved = JSON.parse(localStorage.getItem("columnVisibility") || "{}");
   visibleBosses.forEach((config, index) => {
@@ -187,7 +188,7 @@ function bindCellEvents(ch, config, cb, timer) {
       const data = timersData[id];
       if (data?.expireAt) {
         const remain = Math.floor((data.expireAt - now()) / 1000);
-        if (remain >= 180 && remain <= (config.durationMinutes * 60 - 120) && !confirm("Bạn có muốn reset time boss?")) { cb.checked = true; return; }
+        if (remain >= 180 && remain <= (config.durationMinutes * 60 - 120) && !confirm(tr("resetConfirm"))) { cb.checked = true; return; }
       }
       await db.ref("timers/" + id).remove();
       db.ref("logs").push({ id, boss: config.name, time: now(), action: "uncheck", ...getLogUser() });
@@ -200,8 +201,8 @@ function bindCellEvents(ch, config, cb, timer) {
   };
   timer.oncontextmenu = event => {
     event.preventDefault();
-    const minutes = parseInt(prompt("Nhập số PHÚT muốn đếm ngược:"), 10);
-    if (!Number.isInteger(minutes) || minutes <= 0) return alert("Vui lòng nhập số phút hợp lệ!");
+    const minutes = parseInt(prompt(tr("minutePrompt")), 10);
+    if (!Number.isInteger(minutes) || minutes <= 0) return alert(tr("invalidMinutes"));
     db.ref("timers/" + id).set({ checked: true, expireAt: now() + minutes * 60000, boss: config.name });
   };
   timer.onclick = () => db.ref("timers/" + id).update({ sosOff: true });
@@ -301,9 +302,11 @@ function updateNotifications() {
   notifications.innerHTML = "";
   items.slice(0, 5).forEach(item => {
     const div = document.createElement("div");
-    div.textContent = `Kênh ${item.ch} - Boss ${item.boss} - Còn ${String(Math.floor(item.remain / 60)).padStart(2,"0")}:${String(item.remain % 60).padStart(2,"0")}`;
+    div.textContent = `${tr("channel")} ${item.ch} - Boss ${item.boss} - ${tr("remaining")} ${String(Math.floor(item.remain / 60)).padStart(2,"0")}:${String(item.remain % 60).padStart(2,"0")}`;
     const minutes = item.remain / 60;
     div.className = minutes >= item.config.durationMinutes - item.config.blueMinutes ? "blue" : minutes <= item.config.redMinutes ? "red" : minutes <= item.config.yellowMinutes ? "yellow" : "green";
     notifications.appendChild(div);
   });
 }
+
+window.addEventListener("bosslanguagechange", () => location.reload());
