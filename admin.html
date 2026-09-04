@@ -8,7 +8,7 @@
     * { box-sizing: border-box; }
     body { margin: 0; padding: 28px; font-family: Arial, sans-serif; background: #0d1117; color: #e6edf3; }
     body.auth-pending > * { visibility: hidden; }
-    .wrap { max-width: 920px; margin: auto; }
+    .wrap { max-width: 1100px; margin: auto; }
     h1 { color: #58a6ff; margin: 0 0 8px; }
     .note { color: #9fb0c3; margin-bottom: 22px; }
     .card { background: #151b23; border: 1px solid #2b4058; border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 8px 25px rgba(0,0,0,.25); }
@@ -24,6 +24,14 @@
     .actions { display: flex; gap: 10px; align-items: end; }
     #status { min-height: 20px; margin-top: 12px; color: #79c0ff; }
     code { color: #ffa657; }
+    .user-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .user-table th, .user-table td { border-bottom: 1px solid #2b4058; padding: 11px 9px; text-align: left; vertical-align: top; }
+    .user-table th { color: #79c0ff; }
+    .user-row { cursor: pointer; }
+    .user-row:hover, .user-row.selected { background: #1d2a38; }
+    .badge { display: inline-block; padding: 3px 7px; margin: 2px 3px 2px 0; border-radius: 10px; background: #263b50; font-size: 12px; }
+    .role-admin { color: #d2a8ff; font-weight: 700; }
+    .empty { color: #8b949e; }
     @media (max-width: 650px) { body { padding: 15px; } .grid { grid-template-columns: 1fr; } }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -33,12 +41,19 @@
 <body class="auth-pending">
   <main class="wrap">
     <h1>Phân quyền người dùng</h1>
-    <p class="note">Nhập Firebase UID của tài khoản. UID có tại Firebase Console → Authentication → Users.</p>
+    <p class="note">Chọn một tài khoản trong danh sách để xem hoặc thay đổi quyền.</p>
+    <section class="card">
+      <strong>Danh sách người dùng</strong>
+      <table class="user-table">
+        <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Boss được cấp</th></tr></thead>
+        <tbody id="userList"><tr><td colspan="3" class="empty">Đang tải...</td></tr></tbody>
+      </table>
+    </section>
     <section class="card">
       <div class="grid">
         <div>
           <label for="uid">Firebase UID</label>
-          <input id="uid" type="text" autocomplete="off" placeholder="Dán UID người dùng">
+          <input id="uid" type="text" autocomplete="off" placeholder="Chọn user phía trên hoặc dán UID">
         </div>
         <div>
           <label for="role">Vai trò</label>
@@ -46,7 +61,7 @@
         </div>
       </div>
       <div class="actions" style="margin-top:12px">
-        <button id="load" type="button">TẢI QUYỀN HIỆN TẠI</button>
+        <button id="load" type="button">TẢI BẰNG UID</button>
         <button id="back" type="button">QUAY LẠI</button>
       </div>
       <div id="bosses" class="bosses"></div>
@@ -73,6 +88,9 @@
     const roleInput = document.getElementById("role");
     const statusBox = document.getElementById("status");
     const bossesBox = document.getElementById("bosses");
+    const userList = document.getElementById("userList");
+    let directoryData = {};
+    let permissionsData = {};
 
     bossNames.forEach(name => {
       const label = document.createElement("label");
@@ -88,8 +106,61 @@
         const profile = (await db.ref("users/" + user.uid).once("value")).val() || {};
         if (profile.role !== "admin") return location.replace("index.html");
         document.body.classList.remove("auth-pending");
+        db.ref("directory").on("value", snapshot => { directoryData = snapshot.val() || {}; renderUserList(); });
+        db.ref("users").on("value", snapshot => { permissionsData = snapshot.val() || {}; renderUserList(); });
       } catch (e) { location.replace("index.html"); }
     });
+
+    function permissionSummary(profile) {
+      if (profile.role === "admin") return ["Tất cả boss"];
+      return bossNames.filter(name => profile.allowedBosses && profile.allowedBosses[name] === true);
+    }
+
+    function renderUserList() {
+      const uids = [...new Set([...Object.keys(directoryData), ...Object.keys(permissionsData)])];
+      userList.innerHTML = "";
+      if (!uids.length) {
+        userList.innerHTML = '<tr><td colspan="3" class="empty">Chưa có user. Tài khoản sẽ xuất hiện sau lần đăng nhập đầu tiên.</td></tr>';
+        return;
+      }
+      uids.sort((a, b) => (directoryData[a]?.email || a).localeCompare(directoryData[b]?.email || b));
+      uids.forEach(uid => {
+        const info = directoryData[uid] || {};
+        const profile = permissionsData[uid] || { role: "user", allowedBosses: {} };
+        const row = document.createElement("tr");
+        row.className = "user-row";
+        row.dataset.uid = uid;
+
+        const account = document.createElement("td");
+        const title = document.createElement("strong");
+        title.textContent = info.email || info.displayName || "Chưa có email";
+        const id = document.createElement("div");
+        id.className = "empty"; id.textContent = uid;
+        account.append(title, id);
+
+        const role = document.createElement("td");
+        role.textContent = profile.role === "admin" ? "Admin" : "User";
+        if (profile.role === "admin") role.className = "role-admin";
+
+        const rights = document.createElement("td");
+        const names = permissionSummary(profile);
+        if (!names.length) { rights.textContent = "Chưa được cấp boss"; rights.className = "empty"; }
+        else names.forEach(name => { const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = name; rights.appendChild(badge); });
+
+        row.append(account, role, rights);
+        row.onclick = () => selectUser(uid);
+        userList.appendChild(row);
+      });
+    }
+
+    function selectUser(uid) {
+      uidInput.value = uid;
+      const profile = permissionsData[uid] || {};
+      roleInput.value = profile.role === "admin" ? "admin" : "user";
+      bossesBox.querySelectorAll("input").forEach(box => box.checked = !!(profile.allowedBosses && profile.allowedBosses[box.value]));
+      document.querySelectorAll(".user-row").forEach(row => row.classList.toggle("selected", row.dataset.uid === uid));
+      setStatus("Đã chọn người dùng. Thay đổi quyền rồi bấm Lưu.");
+    }
 
     function setStatus(text, error = false) {
       statusBox.textContent = text;

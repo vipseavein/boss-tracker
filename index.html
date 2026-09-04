@@ -256,6 +256,13 @@
 
     #logoutButton:hover { transform: translateY(-1px); filter: brightness(1.08); }
 
+    #adminButton {
+      padding: 6px 12px; background: #6f42c1; border: none; border-radius: 6px;
+      color: white; font-weight: bold; cursor: pointer; box-shadow: 0 0 10px rgba(111,66,193,.45);
+      position: fixed; left: 20px; bottom: 20px; z-index: 999; display: none;
+    }
+    .permission-hidden { display: none !important; }
+
     body.light #logButton {
       background: #cc7a00;
     }
@@ -292,6 +299,7 @@
 
 <button id="themeToggle">Light Mode</button>
 <button id="logButton">LOG</button>
+<button id="adminButton">PHÂN QUYỀN</button>
 <button id="logoutButton">LOG OUT</button>
 <div id="columnSelector"></div>
 
@@ -312,6 +320,7 @@ themeToggle.onclick = () => {
   localStorage.setItem("themeMode", m);
 };
 document.getElementById("logButton").onclick = () => location.href = "log.html";
+document.getElementById("adminButton").onclick = () => location.href = "admin.html";
 document.getElementById("logoutButton").onclick = () => {
   firebase.auth().signOut().then(() => location.replace("login.html"));
 };
@@ -328,20 +337,45 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 let currentUser = null;
-firebase.auth().onAuthStateChanged(user => {
+let currentProfile = null;
+firebase.auth().onAuthStateChanged(async user => {
   if (!user || user.isAnonymous) {
     location.replace("login.html");
     return;
   }
   currentUser = user;
+  try {
+    currentProfile = (await db.ref("users/" + user.uid).once("value")).val() || {};
+    await db.ref("directory/" + user.uid).update({
+      email: user.email || "",
+      displayName: user.displayName || (user.email ? user.email.split("@")[0] : "User"),
+      lastLoginAt: firebase.database.ServerValue.TIMESTAMP
+    });
+  } catch (error) { currentProfile = {}; }
   const displayName = user.displayName || (user.email ? user.email.split("@")[0] : "User");
   const greeting = document.getElementById("userGreeting");
   greeting.textContent = "Xin chào “";
   const name = document.createElement("strong");
   name.textContent = displayName;
   greeting.append(name, "”");
+  applyBossPermissions();
   document.body.classList.remove("auth-pending");
 });
+
+function isAdmin() { return currentProfile && currentProfile.role === "admin"; }
+function canUseBoss(boss) { return isAdmin() || !!(currentProfile && currentProfile.allowedBosses && currentProfile.allowedBosses[boss] === true); }
+function applyBossPermissions() {
+  bosses.forEach((boss, index) => {
+    const allowed = canUseBoss(boss);
+    const column = index + 1;
+    [...table.rows].forEach(row => row.cells[column]?.classList.toggle("permission-hidden", !allowed));
+    const toggle = document.querySelector(`.colToggle[data-col="${column}"]`);
+    if (toggle) toggle.closest("label").classList.toggle("permission-hidden", !allowed);
+  });
+  document.getElementById("logButton").style.display = isAdmin() ? "block" : "none";
+  document.getElementById("adminButton").style.display = isAdmin() ? "block" : "none";
+  updateNotifications();
+}
 
 function getLogUser() {
   return {
@@ -480,7 +514,8 @@ cell.className = "timer red";
       checked: true,
       expireAt: now() + 240 * 60 * 1000,
       sosStart: now(),
-      sosOff: false
+      sosOff: false,
+      boss: current.boss || id.split("_").slice(1).join("_")
     };
   });
 
@@ -637,7 +672,9 @@ function updateNotifications() {
     const r = Math.floor((d.expireAt - now()) / 1000);
 
     if (r <= 0) return;
-    const [ch,b] = id.split("_");
+    const [ch, ...bossParts] = id.split("_");
+    const b = bossParts.join("_");
+    if (!canUseBoss(b)) return;
     list.push({ch,b,r});
   });
   list.sort((a,b)=>a.r-b.r);
@@ -660,17 +697,20 @@ bosses.forEach(b => {
 
     // CLICK CHECKBOX
     cb.onclick = e => {
+      if (!canUseBoss(b)) { cb.checked = !cb.checked; return; }
       if (cb.checked) {
   const expireAt = now() + 240 * 60 * 1000; // 4 tiếng
   db.ref("timers/" + id).set({
     checked: true,
-    expireAt: expireAt
+    expireAt: expireAt,
+    boss: b
   });
 
   db.ref("logs").push({
     id: id,
     time: now(),
     action: "check",
+    boss: b,
     ...getLogUser()
   });
 }
@@ -697,7 +737,8 @@ bosses.forEach(b => {
         db.ref("logs").push({
           id: id,
           time: now(),
-          action: "uncheck",
+    action: "uncheck",
+    boss: b,
           ...getLogUser()
         });
       }
@@ -706,10 +747,11 @@ bosses.forEach(b => {
     // RIGHT CLICK CHECKBOX → highlight
     cb.oncontextmenu = e => {
   e.preventDefault();
+  if (!canUseBoss(b)) return;
 
   const ref = db.ref("colors/" + id);
   ref.once("value").then(s => {
-    s.exists() ? ref.remove() : ref.set(true);
+    s.exists() ? ref.remove() : ref.set({ active: true, boss: b });
     setTimeout(() => updateBlinkState(cb, cell), 0);
   });
 };
@@ -718,6 +760,7 @@ bosses.forEach(b => {
     // RIGHT CLICK TIMER → set phút
     cell.oncontextmenu = e => {
       e.preventDefault();
+      if (!canUseBoss(b)) return;
       const m = parseInt(prompt("Nhập số PHÚT muốn đếm ngược:"), 10);
       if (!Number.isInteger(m) || m <= 0) {
         alert("Vui lòng nhập số phút hợp lệ!");
@@ -726,13 +769,15 @@ bosses.forEach(b => {
       const expireAt = now() + m * 60 * 1000;
       db.ref("timers/" + id).set({
         checked: true,
-        expireAt: expireAt
+        expireAt: expireAt,
+        boss: b
       });
       cb.checked = true;
     };
 
     // LEFT CLICK TIMER → tắt SOS
     cell.onclick = () => {
+      if (!canUseBoss(b)) return;
       db.ref("timers/" + id).update({ sosOff: true });
     };
   }
