@@ -11,7 +11,8 @@ const roleInput = document.getElementById("role");
 const statusBox = document.getElementById("status");
 const bossesBox = document.getElementById("bosses");
 const userList = document.getElementById("userList");
-let directoryData = {}, permissionsData = {}, bossConfigs = {}, selectedBossName = "";
+let directoryData = {}, permissionsData = {}, bossConfigs = {}, selectedBossName = "", selectedUserUid = "";
+let directoryLoaded = false, permissionsLoaded = false, bossConfigsLoaded = false;
 const initialBossNames = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
 let defaultsCreated = false;
 
@@ -20,8 +21,8 @@ auth.onAuthStateChanged(async user => {
   const profile = (await db.ref("users/" + user.uid).once("value")).val() || {};
   if (profile.role !== "admin") return location.replace("index.html");
   document.body.classList.remove("auth-pending");
-  db.ref("directory").on("value", s => { directoryData = s.val() || {}; renderUsers(); });
-  db.ref("users").on("value", s => { permissionsData = s.val() || {}; renderUsers(); syncTimerAccess(); });
+  db.ref("directory").on("value", s => { directoryData = s.val() || {}; directoryLoaded = true; renderUsers(); });
+  db.ref("users").on("value", s => { permissionsData = s.val() || {}; permissionsLoaded = true; renderUsers(); syncTimerAccess(); });
   db.ref("bossConfigs").on("value", async s => {
     bossConfigs = s.val() || {};
     if (!Object.keys(bossConfigs).length && !defaultsCreated) {
@@ -30,7 +31,8 @@ auth.onAuthStateChanged(async user => {
       await db.ref("bossConfigs").set(defaults);
       return;
     }
-    renderBossOptions(); renderBossConfigs();
+    bossConfigsLoaded = true;
+    renderBossOptions(); renderBossConfigs(); renderUsers();
   });
 });
 
@@ -56,7 +58,9 @@ function logLabel(profile) {
   return "Không";
 }
 function renderBossOptions() {
-  const selected = new Set([...bossesBox.querySelectorAll("input:checked")].map(x=>x.value));
+  const selected = selectedUserUid
+    ? new Set(Object.entries(permissionsData[selectedUserUid]?.allowedBosses || {}).filter(([,allowed])=>allowed).map(([name])=>name))
+    : new Set([...bossesBox.querySelectorAll("input:checked")].map(x=>x.value));
   bossesBox.innerHTML="";
   bossNames().forEach(name=>{
     const label=document.createElement("label"), box=document.createElement("input");
@@ -64,12 +68,17 @@ function renderBossOptions() {
   });
 }
 function renderUsers() {
+  if(!directoryLoaded || !permissionsLoaded || !bossConfigsLoaded){
+    userList.innerHTML='<tr><td colspan="4" class="empty">Đang đồng bộ dữ liệu người dùng và quyền boss...</td></tr>';
+    return;
+  }
   const uids=[...new Set([...Object.keys(directoryData),...Object.keys(permissionsData)])]; userList.innerHTML="";
   if(!uids.length){userList.innerHTML='<tr><td colspan="4" class="empty">Chưa có người dùng.</td></tr>';return;}
   uids.sort((a,b)=>(directoryData[a]?.email||a).localeCompare(directoryData[b]?.email||b));
   uids.forEach(uid=>{
     const info=directoryData[uid]||{}, p=permissionsData[uid]||{};
     const row=document.createElement("tr"); row.className="user-row"; row.dataset.uid=uid;
+    if(uid===selectedUserUid)row.classList.add("selected");
     const account=document.createElement("td"); account.innerHTML=`<strong></strong><div class="empty"></div>`; account.children[0].textContent=info.email||info.displayName||"Chưa có email"; account.children[1].textContent=uid;
     const role=document.createElement("td"); role.textContent=p.role==="admin"?"Admin":"User";
     const log=document.createElement("td"); log.textContent=logLabel(p);
@@ -79,6 +88,7 @@ function renderUsers() {
   });
 }
 function selectUser(uid){
+  selectedUserUid=uid;
   const p=permissionsData[uid]||{}; uidInput.value=uid; roleInput.value=p.role==="admin"?"admin":"user";
   document.getElementById("logAccess").value=p.role==="admin"?"full":(p.logAccess||(p.canViewLogs?"view":"none"));
   document.getElementById("logAccess").disabled=p.role==="admin";
