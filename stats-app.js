@@ -6,11 +6,11 @@ const listeners=[]; let clock=null, ready=false;
 const el=id=>document.getElementById(id);
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ago=(time,now)=>time?Math.floor((now-time)/3600000)+" giờ":"Chưa đủ dữ liệu";
-const date=time=>time?new Date(time).toLocaleString():"Không có log";
+const date=time=>time?new Date(time).toLocaleString(BT_STATS_I18N.locale()):"Không có log";
 function table(title,heads,rows) {
   return '<article class="panel full"><h2>'+esc(title)+'</h2><div class="table-wrap"><table><thead><tr>'+
     heads.map(x=>'<th>'+esc(x)+'</th>').join("")+'</tr></thead><tbody>'+
-    (rows.length?rows.map(row=>'<tr>'+row.map(x=>'<td>'+esc(x)+'</td>').join("")+'</tr>').join(""):
+    (rows.length?rows.map(row=>'<tr>'+row.map((x,i)=>(i===0?'<td data-raw>':'<td>')+esc(x)+'</td>').join("")+'</tr>').join(""):
     '<tr><td colspan="'+heads.length+'">Không có dữ liệu phù hợp</td></tr>')+
     '</tbody></table></div></article>';
 }
@@ -61,7 +61,8 @@ function render() {
     missing.map(x=>[x.boss,x.ch,x.active?"Bật":"Tắt"]));
   html+='</section><p>Đếm thao tác, không phải số boss đã giết. User được gộp theo UID; đổi tên không tách thành người mới. Hồ sơ Database không đồng nghĩa danh sách Authentication.</p>';
   el("report").innerHTML=html;
-  el("updated").textContent="Cập nhật: "+new Date(now).toLocaleTimeString();
+  el("updated").textContent="Cập nhật: "+new Date(now).toLocaleTimeString(BT_STATS_I18N.locale());
+  BT_STATS_I18N.apply();
 }
 function cleanup(){listeners.splice(0).forEach(([ref,fn])=>ref.off("value",fn));clearInterval(clock);ready=false;}
 auth.onAuthStateChanged(async user=>{
@@ -73,7 +74,7 @@ auth.onAuthStateChanged(async user=>{
     state.profile=(await profileRef.once("value")).val()||{};
     const permitted=p=>p.role==="admin"||["view","full"].includes(p.logAccess)||(p.logAccess==null&&p.canViewLogs===true);
     if(!permitted(state.profile))return location.replace("index.html");
-    const watch=(ref,fn)=>{ref.on("value",fn,error=>{ready=false;el("report").textContent="Không đọc được dữ liệu: "+error.message;});listeners.push([ref,fn]);};
+    const watch=(ref,fn)=>{ref.on("value",fn,error=>{ready=false;el("report").textContent="Không đọc được dữ liệu: "+error.message;BT_STATS_I18N.apply();});listeners.push([ref,fn]);};
     let pending=new Set(["logs","timers","bossConfigs",...(state.profile.role==="admin"?["directory"]:[])]);
     for(const key of pending) {
       watch(db.ref(key),snap=>{state[key]=key==="logs"?Object.values(snap.val()||{}):snap.val()||{};
@@ -83,11 +84,13 @@ auth.onAuthStateChanged(async user=>{
     watch(db.ref(".info/serverTimeOffset"),snap=>{state.offset=snap.val()||0;render();});
     el("admin").style.display=state.profile.role==="admin"?"block":"none";
     clock=setInterval(render,60000);
-  } catch(error){el("updated").textContent="Không tải được dữ liệu: "+error.message;}
+  } catch(error){el("updated").textContent="Không tải được dữ liệu: "+error.message;BT_STATS_I18N.apply();}
 });
 el("period").onchange=render;
 for(const [id,path] of [["back","index.html"],["log","log.html"],["admin","admin.html"]])el(id).onclick=()=>location.href=path;
 el("logout").onclick=()=>auth.signOut().then(()=>location.replace("login.html"));
-function theme(){const light=localStorage.getItem("themeMode")==="light";document.body.classList.toggle("light",light);el("theme").textContent=light?"DARK MODE":"LIGHT MODE";}
+function theme(){const light=localStorage.getItem("themeMode")==="light";document.body.classList.toggle("light",light);el("theme").textContent=light?"DARK MODE":"LIGHT MODE";BT_STATS_I18N.apply();}
 theme();el("theme").onclick=()=>{localStorage.setItem("themeMode",document.body.classList.contains("light")?"dark":"light");theme();};
 window.addEventListener("beforeunload",cleanup);
+window.addEventListener("bosslanguagechange",()=>{render();BT_STATS_I18N.apply();});
+BT_STATS_I18N.apply();
