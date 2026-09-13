@@ -51,6 +51,7 @@ themeToggle.onclick = () => {
 };
 document.getElementById("logoutButton").onclick = () => auth.signOut().then(() => location.replace("login.html"));
 document.getElementById("logButton").onclick = () => location.href = "log.html";
+document.getElementById("statsButton").onclick = () => location.href = "stats.html";
 document.getElementById("adminButton").onclick = () => location.href = "admin.html";
 
 db.ref(".info/serverTimeOffset").on("value", snap => serverOffset = snap.val() || 0);
@@ -86,6 +87,7 @@ auth.onAuthStateChanged(async user => {
   document.getElementById("userGreeting").innerHTML = "";
   document.getElementById("userGreeting").append(tr("greeting") + " “", Object.assign(document.createElement("strong"), { textContent: displayName }), "”");
   document.getElementById("logButton").style.display = logAccess() !== "none" ? "block" : "none";
+  document.getElementById("statsButton").style.display = logAccess() !== "none" ? "block" : "none";
   document.getElementById("adminButton").style.display = isAdmin() ? "block" : "none";
   buildInterface();
   attachFirebaseListeners();
