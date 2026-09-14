@@ -24,6 +24,8 @@ header h1{letter-spacing:-1px;font-size:34px}
 .d-rank{display:grid;grid-template-columns:1fr auto;gap:7px;margin:16px 0}.d-rank small{grid-column:1/-1;color:var(--muted);font-size:11px}
 .d-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.d-track{height:8px;border-radius:6px;background:#58769a25;overflow:hidden;grid-column:1/-1;display:flex}
 .d-track i{display:block;background:#458fca;height:100%}.d-track .d-red{background:#ac3f45}.d-scroll{max-height:350px;overflow:auto;padding-right:10px}
+.d-track .d-warn,.d-dot.d-warn{background:#a77317}.d-track .d-unknown{background:repeating-linear-gradient(45deg,#455361,#455361 3px,#35424f 3px,#35424f 6px)}
+.d-priority{margin:12px 0}.d-priority summary{cursor:pointer;font-weight:600;line-height:1.5}.d-priority .d-scroll{max-height:200px}
 .d-rankhead{display:flex;align-items:center;justify-content:space-between;gap:12px}.d-rankhead select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px}
 #statsDetails{margin-top:22px}#statsDetails summary{padding:18px;border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--blue);font-weight:bold}
 #cellDialog{width:min(500px,90vw);background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:28px;box-shadow:0 20px 80px #0008}

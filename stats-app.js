@@ -38,9 +38,9 @@ function render() {
     (result.oldest && now-result.oldest>=+el("period").value*86400000?
       'Có log từ trước đầu kỳ; không đảm bảo lịch sử liên tục.':'Lịch sử chưa phủ hết khoảng thời gian đã chọn.')+
     '</p><section class="cards">'+cards.map(([k,v])=>'<div class="card"><div class="label">'+esc(k)+'</div><div class="value">'+v+'</div></div>').join("")+'</section><section class="grid">';
-  html+=table("Ưu tiên kiểm tra: đang bật, không thấy tắt/reset ≥24 giờ",
+  for(const group of result.priorityGroups) html+=table(BTDashboard.t(group.key),
     ["Boss","Channel","Tắt/reset gần nhất","Mốc đối chiếu","Thời gian","Căn cứ"],
-    suspicious.sort((a,b)=>a.anchor-b.anchor).map(x=>[x.boss,x.ch,date(x.lastStop),date(x.anchor),ago(x.anchor,now),x.lastStop?"Log tắt/reset gần nhất":"Log bật cũ; chưa thấy log tắt/reset"]));
+    [...group.cells].sort((a,b)=>a.anchor-b.anchor).map(x=>[x.boss,x.ch,date(x.lastStop),date(x.anchor),ago(x.anchor,now),x.lastStop?"Log tắt/reset gần nhất":"Log bật cũ; chưa thấy log tắt/reset"]));
   html+=table("Checkbox đang bật nhưng thiếu dữ liệu để kết luận",["Boss","Channel","Log thủ công gần nhất"],
     unknown.map(x=>[x.boss,x.ch,date(x.last)]));
   html+=table("Boss đang bật: mức độ tắt/bật trong 24 giờ",["Boss","Số checkbox đang bật","Thao tác 24h trên các checkbox đang bật"],

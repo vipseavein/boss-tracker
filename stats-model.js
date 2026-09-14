@@ -42,7 +42,13 @@
       users.get(key).bosses.add(x.boss || x.id.split("_").slice(1).join("_"));
       users.get(key).channels.add(x.id.split("_")[0]);
     }
-    return {cells,bossCounts,users:[...users.values()],period,
+    const review12=cells.filter(c=>c.active && c.anchor && now-c.anchor>=43200000);
+    const priorityGroups=[
+      {key:"p12",cells:review12.filter(c=>now-c.anchor<57600000)},
+      {key:"p16",cells:review12.filter(c=>now-c.anchor>=57600000 && now-c.anchor<=86400000)},
+      {key:"p24",cells:review12.filter(c=>now-c.anchor>86400000)}
+    ];
+    return {cells,bossCounts,users:[...users.values()],period,review12,priorityGroups,
       suspicious:cells.filter(x=>x.suspicious),
       unknown:cells.filter(x=>x.unknown),
       stale:cells.filter(x=>x.stale),
