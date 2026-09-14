@@ -10,7 +10,7 @@
     const scoped = valid.filter(x => names.includes(x.boss || x.id.split("_").slice(1).join("_")));
     const period = scoped.filter(x => x.time >= cutoff);
     const users = new Map(Object.entries(directory).map(([uid,v]) =>
-      [uid, {name:v.email || v.displayName || uid, count:0}]));
+      [uid, {name:v.email || v.displayName || uid, count:0, bosses:new Set(), channels:new Set()}]));
     const bossCounts = names.map(name => ({name, count:0, on:0, off:0, active:0, recent24:0}));
     const cells = [];
     for (const boss of bossCounts) {
@@ -31,13 +31,16 @@
         boss.count += recent.length; boss.on += on; boss.off += off;
         if(active) {boss.active++; boss.recent24 += recent24;}
         cells.push({id,boss:boss.name,ch,active,last,lastStop,anchor,suspicious,unknown,
+          actor:history[0]?.userEmail || history[0]?.userName || history[0]?.userUid || "",
           stale:last>0 && now-last>=day,on,off,count:recent.length,recent24});
       }
     }
     for(const x of period) {
       const key=x.userUid || x.userEmail || "unknown";
-      if(!users.has(key)) users.set(key,{name:x.userEmail || x.userName || key,count:0});
+      if(!users.has(key)) users.set(key,{name:x.userEmail || x.userName || key,count:0,bosses:new Set(),channels:new Set()});
       users.get(key).count++;
+      users.get(key).bosses.add(x.boss || x.id.split("_").slice(1).join("_"));
+      users.get(key).channels.add(x.id.split("_")[0]);
     }
     return {cells,bossCounts,users:[...users.values()],period,
       suspicious:cells.filter(x=>x.suspicious),

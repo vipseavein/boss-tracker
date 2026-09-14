@@ -60,7 +60,13 @@ function render() {
   html+=table("Boss/channel không có lịch sử — không kết luận quá 24h",["Boss","Channel","Hiện tại"],
     missing.map(x=>[x.boss,x.ch,x.active?"Bật":"Tắt"]));
   html+='</section><p>Đếm thao tác, không phải số boss đã giết. User được gộp theo UID; đổi tên không tách thành người mới. Hồ sơ Database không đồng nghĩa danh sách Authentication.</p>';
+  const split=html.indexOf('<section class="grid">');
+  const oldOpen=document.getElementById("statsDetails")?.open;
+  html=html.slice(0,split)+BTDashboard.html(result,now,+el("period").value)+
+    '<details id="statsDetails" '+(oldOpen?'open':'')+'><summary data-raw>'+BTDashboard.t("more")+'</summary>'+
+    html.slice(split)+'</details>';
   el("report").innerHTML=html;
+  BTDashboard.bind();
   el("updated").textContent="Cập nhật: "+new Date(now).toLocaleTimeString(BT_STATS_I18N.locale());
   BT_STATS_I18N.apply();
 }

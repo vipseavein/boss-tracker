@@ -1,0 +1,33 @@
+body{background:radial-gradient(ellipse at top left,#162942 0,transparent 55%),var(--bg)}
+header{padding:12px 0 20px;border-bottom:1px solid var(--border)}
+header h1{letter-spacing:-1px;font-size:34px}
+.cards{margin:20px 0;gap:12px}.card{border-top:2px solid #4ea4ed;background:linear-gradient(135deg,#58a6ff12,transparent),var(--panel)}
+.card:nth-child(2){border-color:#f27b66}.card:nth-child(2) .value{color:#f27b66}.card:nth-child(3){border-color:#dda944}
+.card .value{font-size:36px;font-variant-numeric:tabular-nums}
+.d-dashboard h2{font-size:18px;color:var(--text)}.d-dashboard p{color:var(--muted);line-height:1.6}
+.d-layout{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:18px}
+.d-mapscroll{overflow-x:auto;padding:12px 0}.d-maprow{display:grid;grid-template-columns:140px repeat(30,minmax(24px,1fr));min-width:1060px;gap:5px;margin:6px 0;align-items:center}
+.d-maprow strong{overflow:hidden;text-overflow:ellipsis;font-size:12px}
+.d-cell{height:27px;border:1px solid #ffffff25;border-radius:5px;font-size:10px;position:relative;cursor:pointer;transition:transform .12s;color:white}
+.d-cell:hover,.d-cell:focus-visible{transform:translateY(-3px);outline:2px solid var(--text);z-index:1}
+.recent{background:#267958}.warn{background:#a77317}.danger{background:#ac3f45}.unknown{background:repeating-linear-gradient(45deg,#455361,#455361 3px,#35424f 3px,#35424f 6px)}.off{background:#455876}
+.d-cell.checked:after{content:"";position:absolute;right:2px;top:2px;width:4px;height:4px;border-radius:50%;background:white}
+.d-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px}
+.d-legend span{display:flex;align-items:center;gap:6px}.d-legend i,.d-dot{display:inline-block;width:10px;height:10px;border-radius:3px}
+.d-dot{background:#ac3f45}.d-chart{display:flex;gap:6px;height:220px;overflow-x:auto;padding:18px 0 6px}
+.d-bin{flex:1;min-width:22px;display:flex;flex-direction:column;justify-content:end;gap:8px}
+.d-bin small{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden}
+.d-columns{height:170px;border-bottom:1px solid var(--border);display:flex;gap:2px;align-items:end}
+.d-columns i{width:50%;background:#30966d;border-radius:3px 3px 0 0}.d-columns i+ i{background:#d55d65}
+.d-note{font-size:12px}.d-warning{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;padding:13px;margin:7px 0;background:#f851490c;border:1px solid #f8514930;color:var(--text);border-radius:8px;text-align:left;cursor:pointer}
+.d-warning strong{color:#e46c73;white-space:nowrap}.d-warning:hover{background:#f8514920}
+.d-rank{display:grid;grid-template-columns:1fr auto;gap:7px;margin:16px 0}.d-rank small{grid-column:1/-1;color:var(--muted);font-size:11px}
+.d-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.d-track{height:8px;border-radius:6px;background:#58769a25;overflow:hidden;grid-column:1/-1;display:flex}
+.d-track i{display:block;background:#458fca;height:100%}.d-track .d-red{background:#ac3f45}.d-scroll{max-height:350px;overflow:auto;padding-right:10px}
+.d-rankhead{display:flex;align-items:center;justify-content:space-between;gap:12px}.d-rankhead select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:7px;padding:8px}
+#statsDetails{margin-top:22px}#statsDetails summary{padding:18px;border:1px solid var(--border);border-radius:10px;cursor:pointer;color:var(--blue);font-weight:bold}
+#cellDialog{width:min(500px,90vw);background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:28px;box-shadow:0 20px 80px #0008}
+#cellDialog::backdrop{background:#0009}#cellDialog p{line-height:1.6;overflow-wrap:anywhere}.d-close{float:right;padding:8px 12px;border:0;border-radius:5px;background:#385e89;color:white;cursor:pointer}
+body.light{background:radial-gradient(ellipse at top left,#dfeaf7,transparent 55%),var(--bg)}
+@media(max-width:850px){.d-layout{grid-template-columns:1fr}header{padding-top:20px}header h1{font-size:26px}.d-chart{gap:3px}.d-maprow{grid-template-columns:110px repeat(30,26px)}}
+@media(prefers-reduced-motion:reduce){.d-cell{transition:none}}
