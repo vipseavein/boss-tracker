@@ -483,14 +483,25 @@ const firebaseConfig = {
         return;
       }
 
-      if (!confirm("Mã hợp lệ. Bạn có chắc muốn reset toàn bộ checkbox trên tất cả channel?")) return;
+      if (!confirm("Mã hợp lệ. Bạn có chắc muốn reset toàn bộ checkbox và trạng thái tô vàng chuột phải trên tất cả channel?")) return;
 
       try {
-        await db.ref("timers").remove();
-        alert("Đã reset toàn bộ checkbox!");
+        // Timer/checkbox state can be cleared at the parent path because /timers
+        // grants Full Log users write access. Yellow right-click markers are stored
+        // separately under /colors and must be removed per child because Firebase
+        // rules grant write access at /colors/$timerId, not at the /colors parent.
+        const colorsSnapshot = await db.ref("colors").once("value");
+        const colorKeys = colorsSnapshot.exists() ? Object.keys(colorsSnapshot.val() || {}) : [];
+
+        await Promise.all([
+          db.ref("timers").remove(),
+          ...colorKeys.map(key => db.ref("colors/" + key).remove())
+        ]);
+
+        alert("Đã reset toàn bộ checkbox và trạng thái tô vàng!");
       } catch (error) {
-        console.error("Reset all checkboxes failed:", error);
-        alert("Không thể reset checkbox. Vui lòng kiểm tra quyền Firebase.");
+        console.error("Reset all checkboxes/colors failed:", error);
+        alert("Không thể reset toàn bộ checkbox hoặc trạng thái tô vàng. Vui lòng kiểm tra quyền Firebase.");
       }
     });
 
