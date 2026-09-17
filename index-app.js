@@ -17,22 +17,38 @@ const columnSelector = document.getElementById("columnSelector");
 const themeToggle = document.getElementById("themeToggle");
 
 // ===== BOSS ALERT AUDIO =====
-// Use the local alert.ogg file first. Audio errors are isolated so they can never stop timers/Firebase.
+// No extra UI. alert.ogg is local and every boss uses an independent audio source,
+// so simultaneous spawns can sound at the same time. Failed starts are retried briefly.
 const alertSoundElement = document.getElementById("alertSound");
 if (alertSoundElement) {
   try {
-    alertSoundElement.src = "alert.ogg";
     alertSoundElement.preload = "auto";
     alertSoundElement.volume = 1;
     alertSoundElement.load();
-  } catch (error) {
-    console.warn("Boss alert audio preload failed:", error);
-  }
+  } catch (_) {}
 }
 
 let bossAudioContext = null;
 let bossAudioBuffer = null;
-let bossAudioLoadPromise = null;
+let bossAudioBytesPromise = null;
+let bossAudioDecodePromise = null;
+let bossAudioMaster = null;
+const pendingBossAlerts = new Map();
+
+function preloadBossAlertBytes() {
+  if (bossAudioBytesPromise) return bossAudioBytesPromise;
+  bossAudioBytesPromise = fetch("alert.ogg", { cache: "force-cache" })
+    .then(response => {
+      if (!response.ok) throw new Error(`alert.ogg HTTP ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .catch(error => {
+      console.warn("Boss alert preload failed:", error);
+      bossAudioBytesPromise = null;
+      return null;
+    });
+  return bossAudioBytesPromise;
+}
 
 function getBossAudioContext() {
   if (bossAudioContext) return bossAudioContext;
@@ -40,52 +56,82 @@ function getBossAudioContext() {
   if (!AudioContextClass) return null;
   try {
     bossAudioContext = new AudioContextClass();
+    if (typeof bossAudioContext.createDynamicsCompressor === "function") {
+      bossAudioMaster = bossAudioContext.createDynamicsCompressor();
+      bossAudioMaster.threshold.value = -8;
+      bossAudioMaster.knee.value = 16;
+      bossAudioMaster.ratio.value = 4;
+      bossAudioMaster.attack.value = 0.002;
+      bossAudioMaster.release.value = 0.15;
+      bossAudioMaster.connect(bossAudioContext.destination);
+    }
   } catch (error) {
-    console.warn("Web Audio is unavailable:", error);
+    console.warn("Web Audio unavailable:", error);
   }
   return bossAudioContext;
 }
 
-function loadBossAlertBuffer() {
-  if (bossAudioBuffer) return Promise.resolve(bossAudioBuffer);
-  if (bossAudioLoadPromise) return bossAudioLoadPromise;
+function bossAudioDestination(context) {
+  return bossAudioMaster || context.destination;
+}
 
-  bossAudioLoadPromise = (async () => {
+async function decodeBossAlert() {
+  if (bossAudioBuffer) return bossAudioBuffer;
+  if (bossAudioDecodePromise) return bossAudioDecodePromise;
+  bossAudioDecodePromise = (async () => {
     const context = getBossAudioContext();
-    if (!context || typeof fetch !== "function") return null;
-    const response = await fetch("alert.ogg", { cache: "force-cache" });
-    if (!response.ok) throw new Error(`alert.ogg HTTP ${response.status}`);
-    const bytes = await response.arrayBuffer();
+    if (!context) return null;
+    const bytes = await preloadBossAlertBytes();
+    if (!bytes) return null;
     bossAudioBuffer = await context.decodeAudioData(bytes.slice(0));
     return bossAudioBuffer;
   })().catch(error => {
-    console.warn("Unable to preload alert.ogg; HTML audio/fallback beep will be used:", error);
-    bossAudioLoadPromise = null;
+    console.warn("Boss alert decode failed:", error);
+    bossAudioDecodePromise = null;
     return null;
   });
-
-  return bossAudioLoadPromise;
+  return bossAudioDecodePromise;
 }
 
-function unlockBossAudio() {
+async function resumeBossAudio() {
   try {
     const context = getBossAudioContext();
-    if (context?.state === "suspended") context.resume().catch(() => {});
-    loadBossAlertBuffer();
-  } catch (error) {
-    console.warn("Boss audio unlock failed:", error);
+    if (!context) return false;
+    if (context.state === "suspended") await context.resume();
+    if (context.state !== "running") return false;
+    await decodeBossAlert();
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 
-// Browsers require one user gesture before scheduled audio can play reliably.
+function retryPendingBossAlerts() {
+  const current = now();
+  for (const [key, item] of [...pendingBossAlerts.entries()]) {
+    if (current - item.expireAt > 15000) {
+      pendingBossAlerts.delete(key);
+      continue;
+    }
+    tryStartBossAlert(item.id, item.expireAt);
+  }
+}
+
+// Existing normal interaction silently prepares sound; no extra button/status is added.
 ["pointerdown", "keydown", "touchstart"].forEach(type => {
-  window.addEventListener(type, unlockBossAudio, { passive: true });
+  window.addEventListener(type, () => {
+    resumeBossAudio().then(retryPendingBossAlerts);
+  }, { passive: true, capture: true });
+});
+window.addEventListener("focus", () => resumeBossAudio().then(retryPendingBossAlerts));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") resumeBossAudio().then(retryPendingBossAlerts);
 });
 
 function playFallbackBeep() {
   try {
-    const context = getBossAudioContext();
-    if (!context || context.state !== "running") return;
+    const context = bossAudioContext;
+    if (!context || context.state !== "running") return false;
     const start = context.currentTime;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
@@ -93,53 +139,92 @@ function playFallbackBeep() {
     oscillator.frequency.setValueAtTime(880, start);
     gain.gain.setValueAtTime(0.0001, start);
     gain.gain.exponentialRampToValueAtTime(0.28, start + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.20);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.22);
     oscillator.connect(gain);
-    gain.connect(context.destination);
+    gain.connect(bossAudioDestination(context));
     oscillator.start(start);
-    oscillator.stop(start + 0.21);
-  } catch (error) {
-    console.warn("Fallback beep failed:", error);
+    oscillator.stop(start + 0.23);
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 
 async function playBossAlert() {
-  // Every path is protected: if sound fails, the tracker continues normally.
+  // First choice: decoded local OGG through an independent Web Audio source.
   try {
     const context = getBossAudioContext();
-    const buffer = await loadBossAlertBuffer();
     if (context?.state === "suspended") {
       try { await context.resume(); } catch (_) {}
     }
+    const buffer = await decodeBossAlert();
     if (context && context.state === "running" && buffer) {
       const source = context.createBufferSource();
+      const gain = context.createGain();
+      gain.gain.value = 1;
       source.buffer = buffer;
-      source.connect(context.destination);
-      source.start(0);
-      return;
+      source.connect(gain);
+      gain.connect(bossAudioDestination(context));
+      source.start(context.currentTime);
+      return true;
     }
   } catch (error) {
     console.warn("Web Audio boss alert failed:", error);
   }
 
+  // Second choice: a NEW HTMLAudio instance for every boss, so no sound can cut another.
   try {
-    if (alertSoundElement) {
-      alertSoundElement.currentTime = 0;
-      const result = alertSoundElement.play();
-      if (result && typeof result.catch === "function") {
-        result.catch(() => playFallbackBeep());
-      }
-      return;
-    }
+    const audio = new Audio("alert.ogg");
+    audio.preload = "auto";
+    audio.volume = 1;
+    const result = audio.play();
+    if (result && typeof result.then === "function") await result;
+    return true;
   } catch (error) {
     console.warn("HTML boss alert failed:", error);
   }
 
-  playFallbackBeep();
+  return playFallbackBeep();
 }
 
-// Start downloading/decoding the local sound early. This does not play anything.
-loadBossAlertBuffer();
+async function tryStartBossAlert(id, expireAt) {
+  const cell = document.getElementById("t_" + id);
+  if (!cell || !Number.isFinite(+expireAt)) return;
+
+  const alertKey = String(+expireAt);
+  if (cell.dataset.alertedExpire === alertKey || cell.dataset.alertingExpire === alertKey) return;
+
+  const pendingKey = `${id}|${alertKey}`;
+  pendingBossAlerts.set(pendingKey, { id, expireAt: +expireAt });
+  cell.dataset.alertingExpire = alertKey;
+
+  let started = false;
+  try {
+    started = await playBossAlert();
+  } catch (_) {}
+
+  if (cell.dataset.alertingExpire === alertKey) delete cell.dataset.alertingExpire;
+
+  if (started) {
+    cell.dataset.alertedExpire = alertKey;
+    pendingBossAlerts.delete(pendingKey);
+    return;
+  }
+
+  // If the browser was temporarily suspended, retry quickly without changing timer/Firebase.
+  if (now() - (+expireAt) <= 15000) {
+    setTimeout(() => tryStartBossAlert(id, expireAt), 250);
+  } else {
+    pendingBossAlerts.delete(pendingKey);
+  }
+}
+
+function triggerBossAlertForExpire(id, expireAt) {
+  tryStartBossAlert(id, expireAt);
+}
+
+// Download the local file immediately, but do not require AudioContext to be running yet.
+preloadBossAlertBytes();
 
 const defaultBossNames = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
 const defaultBossConfigs = Object.fromEntries(defaultBossNames.map((name, order) => [name, {
@@ -309,7 +394,7 @@ function bindCellEvents(ch, config, cb, timer) {
   const id = `${ch}_${config.name}`;
   cb.onclick = async () => {
     if (cb.checked) {
-      await db.ref("timers/" + id).set({ checked: true, expireAt: now() + config.durationMinutes * 60000, boss: config.name });
+      await db.ref("timers/" + id).set({ checked: true, expireAt: now() + config.durationMinutes * 60000, boss: config.name, lastSpawnAt: null });
       db.ref("logs").push({ id, boss: config.name, time: now(), action: "check", ...getLogUser() });
     } else {
       const data = timersData[id];
@@ -330,19 +415,51 @@ function bindCellEvents(ch, config, cb, timer) {
     event.preventDefault();
     const minutes = parseInt(prompt(tr("minutePrompt")), 10);
     if (!Number.isInteger(minutes) || minutes <= 0) return alert(tr("invalidMinutes"));
-    db.ref("timers/" + id).set({ checked: true, expireAt: now() + minutes * 60000, boss: config.name });
+    db.ref("timers/" + id).set({ checked: true, expireAt: now() + minutes * 60000, boss: config.name, lastSpawnAt: null });
   };
   timer.onclick = () => db.ref("timers/" + id).update({ sosOff: true });
 }
 
 function attachFirebaseListeners() {
+  let timersInitialSyncDone = false;
+
   db.ref("timers").on("value", snapshot => {
-    timersData = snapshot.val() || {};
+    const nextTimersData = snapshot.val() || {};
+    const previousTimersData = timersData || {};
+    const currentTime = now();
+
+    Object.entries(nextTimersData).forEach(([id, data]) => {
+      // v6.9.6+: every automatic reset carries the exact spawn time in Firebase.
+      // All connected clients receive the same event, so sound no longer depends only
+      // on whether their local 1-second interval happened to see 00:00.
+      const spawnAt = +data?.lastSpawnAt;
+      if (Number.isFinite(spawnAt) && currentTime - spawnAt >= -2500 && currentTime - spawnAt <= 15000) {
+        triggerBossAlertForExpire(id, spawnAt);
+      }
+
+      // Backward-compatible recovery if an older client wins the reset transaction
+      // and therefore does not write lastSpawnAt.
+      if (timersInitialSyncDone) {
+        const previous = previousTimersData[id];
+        if (!previous?.checked || !previous.expireAt || !data?.checked || !data.expireAt) return;
+        const oldExpire = +previous.expireAt;
+        const newExpire = +data.expireAt;
+        const age = currentTime - oldExpire;
+        if (newExpire > oldExpire && age >= -2500 && age <= 15000) {
+          triggerBossAlertForExpire(id, oldExpire);
+        }
+      }
+    });
+
+    timersData = nextTimersData;
     visibleBosses.forEach(config => {
       for (let ch = 1; ch <= 30; ch++) updateTimerCell(`${ch}_${config.name}`, timersData[`${ch}_${config.name}`]);
     });
-    ensureTick(); updateNotifications();
+    timersInitialSyncDone = true;
+    ensureTick();
+    updateNotifications();
   });
+
   db.ref("colors").on("value", snapshot => {
     const colors = snapshot.val() || {};
     visibleBosses.forEach(config => {
@@ -355,20 +472,17 @@ function attachFirebaseListeners() {
     });
   });
 }
-
 function updateTimerCell(id, data) {
   const cb = document.getElementById(id), cell = document.getElementById("t_" + id);
   if (!cb || !cell) return;
   if (!data?.checked || !data.expireAt) {
     cb.checked = false; cell.textContent = "--"; cell.className = "timer";
     delete cell.dataset.expire; delete cell.dataset.sosStart; delete cell.dataset.sosOff;
-    delete cell.dataset.alertedExpire;
+    delete cell.dataset.alertedExpire; delete cell.dataset.alertingExpire;
     return updateBlink(cb, cell);
   }
   cb.checked = true;
-  const previousExpire = cell.dataset.expire;
   cell.dataset.expire = data.expireAt;
-  if (String(previousExpire || "") !== String(data.expireAt)) delete cell.dataset.alertedExpire;
   if (data.sosStart) cell.dataset.sosStart = data.sosStart; else delete cell.dataset.sosStart;
   if (data.sosOff) cell.dataset.sosOff = "1"; else delete cell.dataset.sosOff;
   updateBlink(cb, cell);
@@ -389,31 +503,45 @@ function ensureTick() {
       const expire = +cell.dataset.expire;
       const remain = Math.floor((expire - now()) / 1000);
 
-      if (cell.dataset.sosStart && !cell.dataset.sosOff) {
-        const elapsed = Math.floor((now() - +cell.dataset.sosStart) / 1000);
-        if (elapsed <= config.sosMinutes * 60 && Math.floor(now() / 1000) % 2 === 0) {
-          cell.textContent = "_SoS_"; cell.className = "timer red"; return;
-        }
-      }
-
+      // 00:00 always has highest priority. Never let SOS rendering skip the alert.
       if (remain <= 0) {
-        cell.textContent = "BOSS"; cell.className = "timer red";
+        cell.textContent = "BOSS";
+        cell.className = "timer red";
+        triggerBossAlertForExpire(id, expire);
 
-        // Play once for this exact spawn/expire cycle.
-        if (cell.dataset.alertedExpire !== String(expire)) {
-          cell.dataset.alertedExpire = String(expire);
-          playBossAlert().catch(() => {});
-        }
-
+        // Keep the expired value on Firebase for ~1 second before auto-reset.
+        // This gives every connected client a chance to observe 00:00 locally.
         if (!cell.dataset.resetting) {
           cell.dataset.resetting = "1";
           const expectedExpire = expire;
-          db.ref("timers/" + id).transaction(current => {
-            if (!current?.checked || current.expireAt !== expectedExpire) return;
-            return { checked: true, expireAt: now() + config.durationMinutes * 60000, sosStart: now(), sosOff: false, boss };
-          }).finally(() => setTimeout(() => delete cell.dataset.resetting, 1500));
+
+          setTimeout(() => {
+            db.ref("timers/" + id).transaction(current => {
+              if (!current?.checked || current.expireAt !== expectedExpire) return;
+              const resetNow = now();
+              return {
+                checked: true,
+                expireAt: resetNow + config.durationMinutes * 60000,
+                sosStart: resetNow,
+                sosOff: false,
+                boss,
+                lastSpawnAt: expectedExpire
+              };
+            }).finally(() => {
+              setTimeout(() => delete cell.dataset.resetting, 500);
+            });
+          }, 1100);
         }
         return;
+      }
+
+      if (cell.dataset.sosStart && !cell.dataset.sosOff) {
+        const elapsed = Math.floor((now() - +cell.dataset.sosStart) / 1000);
+        if (elapsed <= config.sosMinutes * 60 && Math.floor(now() / 1000) % 2 === 0) {
+          cell.textContent = "_SoS_";
+          cell.className = "timer red";
+          return;
+        }
       }
 
       cell.textContent = `${String(Math.floor(remain / 60)).padStart(2,"0")}:${String(remain % 60).padStart(2,"0")}`;
