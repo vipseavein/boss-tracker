@@ -16,6 +16,131 @@ const notifications = document.getElementById("notifications");
 const columnSelector = document.getElementById("columnSelector");
 const themeToggle = document.getElementById("themeToggle");
 
+// ===== BOSS ALERT AUDIO =====
+// Use the local alert.ogg file first. Audio errors are isolated so they can never stop timers/Firebase.
+const alertSoundElement = document.getElementById("alertSound");
+if (alertSoundElement) {
+  try {
+    alertSoundElement.src = "alert.ogg";
+    alertSoundElement.preload = "auto";
+    alertSoundElement.volume = 1;
+    alertSoundElement.load();
+  } catch (error) {
+    console.warn("Boss alert audio preload failed:", error);
+  }
+}
+
+let bossAudioContext = null;
+let bossAudioBuffer = null;
+let bossAudioLoadPromise = null;
+
+function getBossAudioContext() {
+  if (bossAudioContext) return bossAudioContext;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  try {
+    bossAudioContext = new AudioContextClass();
+  } catch (error) {
+    console.warn("Web Audio is unavailable:", error);
+  }
+  return bossAudioContext;
+}
+
+function loadBossAlertBuffer() {
+  if (bossAudioBuffer) return Promise.resolve(bossAudioBuffer);
+  if (bossAudioLoadPromise) return bossAudioLoadPromise;
+
+  bossAudioLoadPromise = (async () => {
+    const context = getBossAudioContext();
+    if (!context || typeof fetch !== "function") return null;
+    const response = await fetch("alert.ogg", { cache: "force-cache" });
+    if (!response.ok) throw new Error(`alert.ogg HTTP ${response.status}`);
+    const bytes = await response.arrayBuffer();
+    bossAudioBuffer = await context.decodeAudioData(bytes.slice(0));
+    return bossAudioBuffer;
+  })().catch(error => {
+    console.warn("Unable to preload alert.ogg; HTML audio/fallback beep will be used:", error);
+    bossAudioLoadPromise = null;
+    return null;
+  });
+
+  return bossAudioLoadPromise;
+}
+
+function unlockBossAudio() {
+  try {
+    const context = getBossAudioContext();
+    if (context?.state === "suspended") context.resume().catch(() => {});
+    loadBossAlertBuffer();
+  } catch (error) {
+    console.warn("Boss audio unlock failed:", error);
+  }
+}
+
+// Browsers require one user gesture before scheduled audio can play reliably.
+["pointerdown", "keydown", "touchstart"].forEach(type => {
+  window.addEventListener(type, unlockBossAudio, { passive: true });
+});
+
+function playFallbackBeep() {
+  try {
+    const context = getBossAudioContext();
+    if (!context || context.state !== "running") return;
+    const start = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.28, start + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.20);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(start);
+    oscillator.stop(start + 0.21);
+  } catch (error) {
+    console.warn("Fallback beep failed:", error);
+  }
+}
+
+async function playBossAlert() {
+  // Every path is protected: if sound fails, the tracker continues normally.
+  try {
+    const context = getBossAudioContext();
+    const buffer = await loadBossAlertBuffer();
+    if (context?.state === "suspended") {
+      try { await context.resume(); } catch (_) {}
+    }
+    if (context && context.state === "running" && buffer) {
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.start(0);
+      return;
+    }
+  } catch (error) {
+    console.warn("Web Audio boss alert failed:", error);
+  }
+
+  try {
+    if (alertSoundElement) {
+      alertSoundElement.currentTime = 0;
+      const result = alertSoundElement.play();
+      if (result && typeof result.catch === "function") {
+        result.catch(() => playFallbackBeep());
+      }
+      return;
+    }
+  } catch (error) {
+    console.warn("HTML boss alert failed:", error);
+  }
+
+  playFallbackBeep();
+}
+
+// Start downloading/decoding the local sound early. This does not play anything.
+loadBossAlertBuffer();
+
 const defaultBossNames = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
 const defaultBossConfigs = Object.fromEntries(defaultBossNames.map((name, order) => [name, {
   name, order, durationMinutes: 240, sosMinutes: 5, blueMinutes: 5, yellowMinutes: 5, redMinutes: 3
@@ -237,10 +362,13 @@ function updateTimerCell(id, data) {
   if (!data?.checked || !data.expireAt) {
     cb.checked = false; cell.textContent = "--"; cell.className = "timer";
     delete cell.dataset.expire; delete cell.dataset.sosStart; delete cell.dataset.sosOff;
+    delete cell.dataset.alertedExpire;
     return updateBlink(cb, cell);
   }
   cb.checked = true;
+  const previousExpire = cell.dataset.expire;
   cell.dataset.expire = data.expireAt;
+  if (String(previousExpire || "") !== String(data.expireAt)) delete cell.dataset.alertedExpire;
   if (data.sosStart) cell.dataset.sosStart = data.sosStart; else delete cell.dataset.sosStart;
   if (data.sosOff) cell.dataset.sosOff = "1"; else delete cell.dataset.sosOff;
   updateBlink(cb, cell);
@@ -270,6 +398,13 @@ function ensureTick() {
 
       if (remain <= 0) {
         cell.textContent = "BOSS"; cell.className = "timer red";
+
+        // Play once for this exact spawn/expire cycle.
+        if (cell.dataset.alertedExpire !== String(expire)) {
+          cell.dataset.alertedExpire = String(expire);
+          playBossAlert().catch(() => {});
+        }
+
         if (!cell.dataset.resetting) {
           cell.dataset.resetting = "1";
           const expectedExpire = expire;

@@ -295,8 +295,8 @@
 
 <body class="auth-pending">
 
-<audio id="alertSound">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+<audio id="alertSound" preload="auto">
+  <source src="alert.ogg" type="audio/ogg">
 </audio>
 
 <h2>Boss Tracker - Cabal Ultimate Combo (SEA)</h2>
@@ -808,7 +808,7 @@ db.ref("colors").on("child_added", s => {
   
 db.ref("colors").on("child_removed", s => document.getElementById(s.key)?.classList.remove("right-clicked"));
 </script>
-<script src="index-app.js?v=6.9.1"></script>
+<script src="index-app.js?v=6.9.3"></script>
 
 </body>
 </html>
