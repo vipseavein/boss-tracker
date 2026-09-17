@@ -17,8 +17,11 @@ const columnSelector = document.getElementById("columnSelector");
 const themeToggle = document.getElementById("themeToggle");
 
 // ===== BOSS ALERT AUDIO =====
-// No extra UI. alert.ogg is local and every boss uses an independent audio source,
-// so simultaneous spawns can sound at the same time. Failed starts are retried briefly.
+// v6.9.7: schedule every boss alert directly on the Web Audio clock.
+// This does NOT depend on the page's 1-second JS tick, so minimizing the browser,
+// switching to a game, or leaving the tab unfocused does not delay the alert.
+// A practically inaudible keep-alive node keeps the audio engine active in background.
+// No extra UI is added.
 const alertSoundElement = document.getElementById("alertSound");
 if (alertSoundElement) {
   try {
@@ -33,7 +36,13 @@ let bossAudioBuffer = null;
 let bossAudioBytesPromise = null;
 let bossAudioDecodePromise = null;
 let bossAudioMaster = null;
-const pendingBossAlerts = new Map();
+let bossAudioKeepAliveOscillator = null;
+let bossAudioKeepAliveGain = null;
+
+// Desired wall-clock expiry for each boss, and the actual Web Audio source scheduled for it.
+const bossAlertTargets = new Map();       // id -> expireAt(ms)
+const bossScheduledAlerts = new Map();    // id -> { expireAt, source }
+const fallbackAlertKeys = new Map();      // "id|expireAt" -> wall-clock time played
 
 function preloadBossAlertBytes() {
   if (bossAudioBytesPromise) return bossAudioBytesPromise;
@@ -54,8 +63,10 @@ function getBossAudioContext() {
   if (bossAudioContext) return bossAudioContext;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
+
   try {
-    bossAudioContext = new AudioContextClass();
+    bossAudioContext = new AudioContextClass({ latencyHint: "interactive" });
+
     if (typeof bossAudioContext.createDynamicsCompressor === "function") {
       bossAudioMaster = bossAudioContext.createDynamicsCompressor();
       bossAudioMaster.threshold.value = -8;
@@ -65,9 +76,17 @@ function getBossAudioContext() {
       bossAudioMaster.release.value = 0.15;
       bossAudioMaster.connect(bossAudioContext.destination);
     }
+
+    bossAudioContext.addEventListener?.("statechange", () => {
+      if (bossAudioContext?.state === "running") {
+        startBossAudioKeepAlive();
+        decodeBossAlert().then(() => scheduleAllBossAlerts(true));
+      }
+    });
   } catch (error) {
     console.warn("Web Audio unavailable:", error);
   }
+
   return bossAudioContext;
 }
 
@@ -78,6 +97,7 @@ function bossAudioDestination(context) {
 async function decodeBossAlert() {
   if (bossAudioBuffer) return bossAudioBuffer;
   if (bossAudioDecodePromise) return bossAudioDecodePromise;
+
   bossAudioDecodePromise = (async () => {
     const context = getBossAudioContext();
     if (!context) return null;
@@ -90,43 +110,119 @@ async function decodeBossAlert() {
     bossAudioDecodePromise = null;
     return null;
   });
+
   return bossAudioDecodePromise;
 }
 
-async function resumeBossAudio() {
+function startBossAudioKeepAlive() {
+  // Keep the Web Audio render thread alive while this page is hidden/minimized.
+  // 24 Hz at an extremely small gain is effectively inaudible on normal speakers,
+  // but prevents the alert engine from going idle on desktop Chromium browsers.
+  try {
+    const context = bossAudioContext;
+    if (!context || context.state !== "running" || bossAudioKeepAliveOscillator) return;
+
+    bossAudioKeepAliveOscillator = context.createOscillator();
+    bossAudioKeepAliveGain = context.createGain();
+    bossAudioKeepAliveOscillator.type = "sine";
+    bossAudioKeepAliveOscillator.frequency.value = 24;
+    bossAudioKeepAliveGain.gain.value = 0.000001;
+    bossAudioKeepAliveOscillator.connect(bossAudioKeepAliveGain);
+    bossAudioKeepAliveGain.connect(context.destination);
+    bossAudioKeepAliveOscillator.start();
+  } catch (error) {
+    console.warn("Boss audio keep-alive failed:", error);
+  }
+}
+
+async function resumeBossAudio(forceReschedule = true) {
   try {
     const context = getBossAudioContext();
     if (!context) return false;
     if (context.state === "suspended") await context.resume();
     if (context.state !== "running") return false;
+
+    startBossAudioKeepAlive();
     await decodeBossAlert();
+    scheduleAllBossAlerts(forceReschedule);
     return true;
   } catch (_) {
     return false;
   }
 }
 
-function retryPendingBossAlerts() {
-  const current = now();
-  for (const [key, item] of [...pendingBossAlerts.entries()]) {
-    if (current - item.expireAt > 15000) {
-      pendingBossAlerts.delete(key);
-      continue;
-    }
-    tryStartBossAlert(item.id, item.expireAt);
+function stopScheduledBossAlert(id) {
+  const current = bossScheduledAlerts.get(id);
+  if (!current) return;
+  try { current.source.stop(); } catch (_) {}
+  try { current.source.disconnect(); } catch (_) {}
+  bossScheduledAlerts.delete(id);
+}
+
+function scheduleBossAlert(id, expireAt, force = false) {
+  const targetExpire = +expireAt;
+  if (!Number.isFinite(targetExpire)) return false;
+
+  const context = bossAudioContext;
+  const buffer = bossAudioBuffer;
+  if (!context || context.state !== "running" || !buffer) return false;
+
+  const existing = bossScheduledAlerts.get(id);
+  if (!force && existing && existing.expireAt === targetExpire) return true;
+  if (existing) stopScheduledBossAlert(id);
+
+  const deltaMs = targetExpire - now();
+  // Old events are intentionally ignored. Recent missed events can still play immediately.
+  if (deltaMs < -15000) return false;
+
+  try {
+    const source = context.createBufferSource();
+    const gain = context.createGain();
+    gain.gain.value = 1;
+    source.buffer = buffer;
+    source.connect(gain);
+    gain.connect(bossAudioDestination(context));
+
+    // Web Audio scheduling uses the audio render clock, not setInterval/setTimeout.
+    // This is the key to reliable alerts while the tab is minimized/unfocused.
+    const when = context.currentTime + Math.max(0, deltaMs / 1000);
+    source.start(when);
+    bossScheduledAlerts.set(id, { expireAt: targetExpire, source });
+    return true;
+  } catch (error) {
+    console.warn("Boss alert scheduling failed:", error);
+    return false;
   }
 }
 
-// Existing normal interaction silently prepares sound; no extra button/status is added.
-["pointerdown", "keydown", "touchstart"].forEach(type => {
-  window.addEventListener(type, () => {
-    resumeBossAudio().then(retryPendingBossAlerts);
-  }, { passive: true, capture: true });
-});
-window.addEventListener("focus", () => resumeBossAudio().then(retryPendingBossAlerts));
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") resumeBossAudio().then(retryPendingBossAlerts);
-});
+function scheduleAllBossAlerts(force = false) {
+  if (!bossAudioContext || bossAudioContext.state !== "running" || !bossAudioBuffer) return;
+  for (const [id, expireAt] of bossAlertTargets.entries()) {
+    scheduleBossAlert(id, expireAt, force);
+  }
+}
+
+function syncBossAlertSchedule(id, data) {
+  if (!data?.checked || !Number.isFinite(+data.expireAt)) {
+    bossAlertTargets.delete(id);
+    stopScheduledBossAlert(id);
+    return;
+  }
+
+  const expireAt = +data.expireAt;
+  const oldTarget = bossAlertTargets.get(id);
+  bossAlertTargets.set(id, expireAt);
+
+  if (oldTarget !== expireAt) scheduleBossAlert(id, expireAt, true);
+  else scheduleBossAlert(id, expireAt, false);
+}
+
+function cleanupFallbackAlertKeys() {
+  const cutoff = Date.now() - 30000;
+  for (const [key, playedAt] of fallbackAlertKeys.entries()) {
+    if (playedAt < cutoff) fallbackAlertKeys.delete(key);
+  }
+}
 
 function playFallbackBeep() {
   try {
@@ -150,80 +246,73 @@ function playFallbackBeep() {
   }
 }
 
-async function playBossAlert() {
-  // First choice: decoded local OGG through an independent Web Audio source.
+async function playImmediateBossAlert(id, expireAt) {
+  const key = `${id}|${+expireAt}`;
+  cleanupFallbackAlertKeys();
+  if (fallbackAlertKeys.has(key)) return true;
+
+  // If this exact boss is already scheduled on a RUNNING Web Audio clock,
+  // do not duplicate it: that source fires at the exact wall-clock expiry.
+  const scheduled = bossScheduledAlerts.get(id);
+  if (scheduled?.expireAt === +expireAt && bossAudioContext?.state === "running") return true;
+
   try {
-    const context = getBossAudioContext();
-    if (context?.state === "suspended") {
-      try { await context.resume(); } catch (_) {}
-    }
-    const buffer = await decodeBossAlert();
-    if (context && context.state === "running" && buffer) {
+    const context = bossAudioContext;
+    if (context?.state === "running" && bossAudioBuffer) {
       const source = context.createBufferSource();
       const gain = context.createGain();
       gain.gain.value = 1;
-      source.buffer = buffer;
+      source.buffer = bossAudioBuffer;
       source.connect(gain);
       gain.connect(bossAudioDestination(context));
       source.start(context.currentTime);
+      fallbackAlertKeys.set(key, Date.now());
       return true;
     }
-  } catch (error) {
-    console.warn("Web Audio boss alert failed:", error);
-  }
+  } catch (_) {}
 
-  // Second choice: a NEW HTMLAudio instance for every boss, so no sound can cut another.
+  // Independent HTMLAudio fallback. A new element is used for every boss so simultaneous
+  // spawns never reset/cut each other.
   try {
     const audio = new Audio("alert.ogg");
     audio.preload = "auto";
     audio.volume = 1;
     const result = audio.play();
     if (result && typeof result.then === "function") await result;
+    fallbackAlertKeys.set(key, Date.now());
     return true;
-  } catch (error) {
-    console.warn("HTML boss alert failed:", error);
-  }
-
-  return playFallbackBeep();
-}
-
-async function tryStartBossAlert(id, expireAt) {
-  const cell = document.getElementById("t_" + id);
-  if (!cell || !Number.isFinite(+expireAt)) return;
-
-  const alertKey = String(+expireAt);
-  if (cell.dataset.alertedExpire === alertKey || cell.dataset.alertingExpire === alertKey) return;
-
-  const pendingKey = `${id}|${alertKey}`;
-  pendingBossAlerts.set(pendingKey, { id, expireAt: +expireAt });
-  cell.dataset.alertingExpire = alertKey;
-
-  let started = false;
-  try {
-    started = await playBossAlert();
   } catch (_) {}
 
-  if (cell.dataset.alertingExpire === alertKey) delete cell.dataset.alertingExpire;
-
-  if (started) {
-    cell.dataset.alertedExpire = alertKey;
-    pendingBossAlerts.delete(pendingKey);
-    return;
-  }
-
-  // If the browser was temporarily suspended, retry quickly without changing timer/Firebase.
-  if (now() - (+expireAt) <= 15000) {
-    setTimeout(() => tryStartBossAlert(id, expireAt), 250);
-  } else {
-    pendingBossAlerts.delete(pendingKey);
-  }
+  const beeped = playFallbackBeep();
+  if (beeped) fallbackAlertKeys.set(key, Date.now());
+  return beeped;
 }
 
 function triggerBossAlertForExpire(id, expireAt) {
-  tryStartBossAlert(id, expireAt);
+  // Primary path is the pre-scheduled Web Audio source. This function is only a recovery
+  // path for a newly received Firebase spawn event or an alert that could not be scheduled.
+  playImmediateBossAlert(id, expireAt).catch(() => {});
 }
 
-// Download the local file immediately, but do not require AudioContext to be running yet.
+function prepareBossAudioFromUserGesture() {
+  resumeBossAudio(true).catch(() => {});
+}
+
+// No visible controls: any normal interaction with the tracker permanently prepares
+// the background audio engine for the rest of the session.
+["pointerdown", "keydown", "touchstart"].forEach(type => {
+  window.addEventListener(type, prepareBossAudioFromUserGesture, { passive: true, capture: true });
+});
+
+// If the browser/OS temporarily suspended audio (sleep/device switch), reschedule all alerts
+// against the current wall clock as soon as audio becomes available again.
+window.addEventListener("focus", () => resumeBossAudio(true).catch(() => {}));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") resumeBossAudio(true).catch(() => {});
+});
+window.addEventListener("pageshow", () => resumeBossAudio(true).catch(() => {}));
+
+// Download alert.ogg immediately. Decoding/scheduling starts as soon as Web Audio is permitted.
 preloadBossAlertBytes();
 
 const defaultBossNames = ["Manticore","Dark Kimzark","Minisha","Pluma","Pena Top","Pena Bot","Quadra","Tank Top","Tank Bot","Cây","Sói","Bò","Cauda"];
@@ -475,6 +564,7 @@ function attachFirebaseListeners() {
 function updateTimerCell(id, data) {
   const cb = document.getElementById(id), cell = document.getElementById("t_" + id);
   if (!cb || !cell) return;
+  syncBossAlertSchedule(id, data);
   if (!data?.checked || !data.expireAt) {
     cb.checked = false; cell.textContent = "--"; cell.className = "timer";
     delete cell.dataset.expire; delete cell.dataset.sosStart; delete cell.dataset.sosOff;
