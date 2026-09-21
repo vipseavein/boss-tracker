@@ -36,6 +36,22 @@
       color: #e6edf3;
     }
 
+    #clearFilters {
+      padding: 6px 12px;
+      margin: 0 5px;
+      border-radius: 6px;
+      border: 1px solid #8b949e;
+      background: #21262d;
+      color: #e6edf3;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #clearFilters:hover {
+      background: #30363d;
+      border-color: #58a6ff;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -140,11 +156,8 @@
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="i18n.js?v=6.7"></script>
-
-  <!-- XLSX for Excel export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 
@@ -152,7 +165,6 @@
 
   <h2>Lịch sử thao tác Checkbox</h2>
 
-  <!-- BỘ LỌC -->
   <div id="filters">
     <select id="filterChannel">
       <option value="">-- Lọc theo kênh --</option>
@@ -173,9 +185,9 @@
     </select>
 
     <input type="date" id="filterDate">
+    <button id="clearFilters" type="button">Clear bộ lọc</button>
   </div>
 
-  <!-- BẢNG LOG -->
   <table id="logTable">
     <tr>
       <th>Thời gian</th>
@@ -186,14 +198,12 @@
     </tr>
   </table>
 
-  <!-- PHÂN TRANG -->
   <div id="pagination">
     <button id="prevPage">Trang trước</button>
     <span id="pageInfo">Trang 1</span>
     <button id="nextPage">Trang sau</button>
   </div>
 
-  <!-- ACTION BUTTONS BOTTOM-LEFT -->
   <div id="actions">
     <button id="exportExcel">Xuất Excel</button>
     <button id="clearLogs">Xóa log cũ hơn 5 tiếng</button>
@@ -201,12 +211,10 @@
     <button id="resetAllCheckboxes">Reset toàn bộ checkbox</button>
   </div>
 
-  <!-- BACK BUTTON BOTTOM-RIGHT -->
   <button id="backButton">Quay lại trang chính</button>
   <button id="adminButton">PHÂN QUYỀN</button>
 
   <script>
-    /* Firebase Config (giữ nguyên index_bug) */
 const firebaseConfig = {
   apiKey: "AIzaSyD78MgA3rKInTGyAzFW7kmuq-xJENbnqSA",
   authDomain: "boss-tracker-893f8.firebaseapp.com",
@@ -217,10 +225,10 @@ const firebaseConfig = {
   appId: "1:279598212615:web:d2cf2347c697425f77eca2"
 };
     firebase.initializeApp(firebaseConfig);
-   
 
     const db = firebase.database();
     let logPageIsAdmin = false;
+
     firebase.auth().onAuthStateChanged(async user => {
       if (!user || user.isAnonymous) {
         location.replace("login.html");
@@ -231,11 +239,17 @@ const firebaseConfig = {
         logPageIsAdmin = profile.role === "admin";
         const access = logPageIsAdmin ? "full" : (profile.logAccess || (profile.canViewLogs === true ? "view" : "none"));
         if (access === "none") { location.replace("index.html"); return; }
+
         ["clearLogs", "clearAllLogs", "resetAllCheckboxes"].forEach(id => {
           document.getElementById(id).style.display = access === "full" ? "inline-block" : "none";
         });
+
         document.getElementById("adminButton").style.display = logPageIsAdmin ? "block" : "none";
-      } catch (error) { location.replace("index.html"); return; }
+      } catch (error) {
+        location.replace("index.html");
+        return;
+      }
+
       document.body.classList.remove("auth-pending");
     });
 
@@ -260,8 +274,11 @@ const firebaseConfig = {
         if (!log || !log.id || !log.time) return;
         allLogs.push(log);
       });
-    allLogs.reverse();
 
+      allLogs.reverse();
+
+      // Chỉ cập nhật danh sách lựa chọn khi dữ liệu log thay đổi.
+      fillFilterOptions();
       applyFilters();
     });
 
@@ -273,6 +290,7 @@ const firebaseConfig = {
         const ch = parts[0];
         const boss = parts.slice(1).join("_");
 
+        // Tất cả filter được kết hợp đồng thời theo kiểu AND.
         if (filterChannel.value && filterChannel.value !== ch) return false;
         if (filterBoss.value && filterBoss.value !== boss) return false;
         if (filterAction.value && filterAction.value !== log.action) return false;
@@ -283,6 +301,7 @@ const firebaseConfig = {
           const yyyy = d.getFullYear();
           const mm = String(d.getMonth() + 1).padStart(2, "0");
           const dd = String(d.getDate()).padStart(2, "0");
+
           if (`${yyyy}-${mm}-${dd}` !== filterDate.value) return false;
         }
 
@@ -292,10 +311,14 @@ const firebaseConfig = {
       currentPage = 1;
       renderPagination();
       renderLogs();
-      fillFilterOptions();
     }
 
     function fillFilterOptions() {
+      // Giữ nguyên filter đang chọn khi Firebase có log mới.
+      const selectedChannel = filterChannel.value;
+      const selectedBoss = filterBoss.value;
+      const selectedUser = filterUser.value;
+
       const channels = new Set();
       const bosses = new Set();
       const users = new Set();
@@ -303,18 +326,22 @@ const firebaseConfig = {
       allLogs.forEach(log => {
         const parts = log.id.split("_");
         if (parts.length < 2) return;
+
         channels.add(parts[0]);
         bosses.add(parts.slice(1).join("_"));
         users.add(getUserLabel(log));
       });
 
       filterChannel.innerHTML = `<option value="">-- Lọc theo kênh --</option>`;
-      channels.forEach(ch => filterChannel.innerHTML += `<option value="${ch}">Kênh ${ch}</option>`);
+      [...channels].sort((a, b) => Number(a) - Number(b)).forEach(ch => {
+        filterChannel.innerHTML += `<option value="${ch}">Kênh ${ch}</option>`;
+      });
 
       filterBoss.innerHTML = `<option value="">-- Lọc theo boss --</option>`;
-      bosses.forEach(b => filterBoss.innerHTML += `<option value="${b}">${b}</option>`);
+      [...bosses].sort().forEach(b => {
+        filterBoss.innerHTML += `<option value="${b}">${b}</option>`;
+      });
 
-      const selectedUser = filterUser.value;
       filterUser.innerHTML = `<option value="">-- Người dùng --</option>`;
       [...users].sort().forEach(user => {
         const option = document.createElement("option");
@@ -322,6 +349,9 @@ const firebaseConfig = {
         option.textContent = user;
         filterUser.appendChild(option);
       });
+
+      filterChannel.value = selectedChannel;
+      filterBoss.value = selectedBoss;
       filterUser.value = selectedUser;
     }
 
@@ -386,6 +416,7 @@ const firebaseConfig = {
 
     document.getElementById("nextPage").onclick = () => {
       const totalPages = Math.ceil(filteredLogs.length / rowsPerPage);
+
       if (currentPage < totalPages) {
         currentPage++;
         renderPagination();
@@ -399,7 +430,15 @@ const firebaseConfig = {
     filterUser.onchange =
     filterDate.onchange = applyFilters;
 
-    /* EXPORT EXCEL */
+    document.getElementById("clearFilters").addEventListener("click", () => {
+      filterChannel.value = "";
+      filterBoss.value = "";
+      filterAction.value = "";
+      filterUser.value = "";
+      filterDate.value = "";
+      applyFilters();
+    });
+
     document.getElementById("exportExcel").addEventListener("click", () => {
       if (filteredLogs.length === 0) {
         alert("Không có dữ liệu để xuất!");
@@ -428,7 +467,6 @@ const firebaseConfig = {
       XLSX.writeFile(workbook, "lich_su_log.xlsx");
     });
 
-    /* CLEAR LOGS – chỉ xóa log cũ hơn 5 tiếng */
     document.getElementById("clearLogs").addEventListener("click", () => {
       if (!confirm("Bạn có chắc muốn xóa log cũ hơn 5 tiếng?")) return;
 
@@ -456,7 +494,6 @@ const firebaseConfig = {
       });
     });
 
-    /* CLEAR ALL LOGS */
     document.getElementById("clearAllLogs").addEventListener("click", async () => {
       if (!confirm("Bạn có chắc muốn xóa TOÀN BỘ lịch sử log? Thao tác này không thể hoàn tác.")) return;
 
@@ -474,10 +511,10 @@ const firebaseConfig = {
       }
     });
 
-    /* RESET ALL CHECKBOXES – confirmation code required */
     document.getElementById("resetAllCheckboxes").addEventListener("click", async () => {
       const code = prompt("Nhập mã xác nhận để reset toàn bộ checkbox:");
       if (code === null) return;
+
       if (code.trim() !== "OANG") {
         alert("Mã xác nhận không chính xác!");
         return;
@@ -486,10 +523,6 @@ const firebaseConfig = {
       if (!confirm("Mã hợp lệ. Bạn có chắc muốn reset toàn bộ checkbox và trạng thái tô vàng chuột phải trên tất cả channel?")) return;
 
       try {
-        // Timer/checkbox state can be cleared at the parent path because /timers
-        // grants Full Log users write access. Yellow right-click markers are stored
-        // separately under /colors and must be removed per child because Firebase
-        // rules grant write access at /colors/$timerId, not at the /colors parent.
         const colorsSnapshot = await db.ref("colors").once("value");
         const colorKeys = colorsSnapshot.exists() ? Object.keys(colorsSnapshot.val() || {}) : [];
 
@@ -505,10 +538,10 @@ const firebaseConfig = {
       }
     });
 
-    /* BACK BUTTON */
     document.getElementById("backButton").addEventListener("click", () => {
       window.location.href = "index.html";
     });
+
     document.getElementById("adminButton").addEventListener("click", () => {
       window.location.href = "admin.html";
     });
@@ -516,5 +549,3 @@ const firebaseConfig = {
 
 </body>
 </html>
-
-
