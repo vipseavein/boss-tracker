@@ -256,27 +256,61 @@ function configFor(name) { return bossConfigs[name] || defaultBossConfigs[name] 
 const sosChannelStyle = document.createElement("style");
 sosChannelStyle.textContent = `
   @keyframes channelSOSBlink {
-  0%, 100% {
-    color: #ffd500;
-    text-shadow:
-      0 0 3px #ffd500,
-      0 0 7px #ffcc00;
+    0%, 100% {
+      color: #ffd500;
+      transform: scale(1);
+      text-shadow:
+        0 0 3px #ffd500,
+        0 0 7px #ffcc00;
+    }
+
+    50% {
+      color: #ffffff;
+      transform: scale(1.35);
+      text-shadow:
+        0 0 5px #ffffff,
+        0 0 12px #ffe600,
+        0 0 20px #ffcc00;
+    }
   }
 
-  50% {
-    color: #ffffff;
-    text-shadow:
-      0 0 5px #ffffff,
-      0 0 10px #ffe600,
-      0 0 18px #ffcc00;
-  }
-}
+  @keyframes channelSOSArrow {
+    0%, 100% {
+      transform: translateY(-50%) translateX(-4px);
+      opacity: 0.45;
+    }
 
-#bossTable td.channel-col.channel-sos {
-  color: #ffd500 !important;
-  font-weight: 900 !important;
-  animation: channelSOSBlink 0.4s infinite;
-}
+    50% {
+      transform: translateY(-50%) translateX(3px);
+      opacity: 1;
+    }
+  }
+
+  #bossTable td.channel-col.channel-sos {
+    color: #ffd500 !important;
+    font-weight: 900 !important;
+    position: relative;
+    z-index: 5;
+    animation: channelSOSBlink 0.5s ease-in-out infinite;
+    transform-origin: center center;
+  }
+
+  #bossTable td.channel-col.channel-sos::before {
+    content: "➜";
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    color: #fff200;
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1;
+    text-shadow:
+      0 0 4px #ffffff,
+      0 0 8px #fff200,
+      0 0 14px #ffcc00;
+    animation: channelSOSArrow 0.5s ease-in-out infinite;
+    pointer-events: none;
+  }
 
   body.light #bossTable td.channel-col.channel-sos {
     font-weight: 900 !important;
@@ -637,5 +671,6 @@ function updateNotifications() {
 }
 
 window.addEventListener("bosslanguagechange", () => location.reload());
+
 
 
