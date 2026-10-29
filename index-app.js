@@ -256,27 +256,27 @@ function configFor(name) { return bossConfigs[name] || defaultBossConfigs[name] 
 const sosChannelStyle = document.createElement("style");
 sosChannelStyle.textContent = `
   @keyframes channelSOSBlink {
-    0%, 100% {
-      color: #ff2d2d;
-      text-shadow:
-        0 0 3px #ff0000,
-        0 0 6px #ff0000;
-    }
-
-    50% {
-      color: #ffffff;
-      text-shadow:
-        0 0 5px #ffffff,
-        0 0 10px #ff0000,
-        0 0 18px #ff0000;
-    }
+  0%, 100% {
+    color: #ffd500;
+    text-shadow:
+      0 0 3px #ffd500,
+      0 0 7px #ffcc00;
   }
 
-  #bossTable td.channel-col.channel-sos {
-    color: #ff2d2d !important;
-    font-weight: 900 !important;
-    animation: channelSOSBlink 0.4s infinite;
+  50% {
+    color: #ffffff;
+    text-shadow:
+      0 0 5px #ffffff,
+      0 0 10px #ffe600,
+      0 0 18px #ffcc00;
   }
+}
+
+#bossTable td.channel-col.channel-sos {
+  color: #ffd500 !important;
+  font-weight: 900 !important;
+  animation: channelSOSBlink 0.4s infinite;
+}
 
   body.light #bossTable td.channel-col.channel-sos {
     font-weight: 900 !important;
