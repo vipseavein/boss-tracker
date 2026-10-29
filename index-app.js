@@ -1,4 +1,4 @@
-const firebaseConfig = {
+﻿const firebaseConfig = {
   apiKey: "AIzaSyD78MgA3rKInTGyAzFW7kmuq-xJENbnqSA",
   authDomain: "boss-tracker-893f8.firebaseapp.com",
   databaseURL: "https://boss-tracker-893f8-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -249,6 +249,51 @@ function canUseBoss(name) { return isAdmin() || currentProfile.allowedBosses?.[n
 function now() { return Date.now() + serverOffset; }
 function configFor(name) { return bossConfigs[name] || defaultBossConfigs[name] || { name, durationMinutes: 240, sosMinutes: 5, blueMinutes: 5, yellowMinutes: 5, redMinutes: 3 }; }
 
+// ===== SOS CHANNEL HIGHLIGHT =====
+// Nếu bất kỳ boss nào trong cùng một channel đang ở trạng thái SOS,
+// số channel sẽ chuyển sang đỏ + đậm. Khi toàn bộ SOS của channel hết/tắt,
+// số channel tự trở lại trạng thái bình thường.
+const sosChannelStyle = document.createElement("style");
+sosChannelStyle.textContent = `
+  #bossTable td.channel-col.channel-sos {
+    color: #ff3b3b !important;
+    font-weight: 900 !important;
+    text-shadow: 0 0 8px rgba(255, 59, 59, 0.75);
+  }
+
+  body.light #bossTable td.channel-col.channel-sos {
+    color: #d40000 !important;
+    font-weight: 900 !important;
+    text-shadow: 0 0 5px rgba(212, 0, 0, 0.35);
+  }
+`;
+document.head.appendChild(sosChannelStyle);
+
+function isSOSActiveForBoss(data, bossName) {
+  if (!data?.checked || !data.sosStart || data.sosOff) return false;
+
+  const sosStart = +data.sosStart;
+  if (!Number.isFinite(sosStart)) return false;
+
+  const elapsed = now() - sosStart;
+  const sosDuration = Number(configFor(bossName).sosMinutes || 5) * 60000;
+
+  return elapsed >= 0 && elapsed <= sosDuration;
+}
+
+function updateSOSChannelHighlights() {
+  for (let ch = 1; ch <= 30; ch++) {
+    const hasSOS = visibleBosses.some(config => {
+      const id = `${ch}_${config.name}`;
+      return isSOSActiveForBoss(timersData[id], config.name);
+    });
+
+    // Row 0 là header, nên row index chính là số channel.
+    const channelCell = table.rows[ch]?.cells[0];
+    channelCell?.classList.toggle("channel-sos", hasSOS);
+  }
+}
+
 function applyTheme(mode) {
   document.body.classList.toggle("light", mode === "light");
   themeToggle.textContent = mode === "light" ? "Dark Mode" : "Light Mode";
@@ -455,6 +500,7 @@ function attachFirebaseListeners() {
     visibleBosses.forEach(config => {
       for (let ch = 1; ch <= 30; ch++) updateTimerCell(`${ch}_${config.name}`, timersData[`${ch}_${config.name}`]);
     });
+    updateSOSChannelHighlights();
     timersInitialSyncDone = true;
     ensureTick();
     updateNotifications();
@@ -549,6 +595,7 @@ function ensureTick() {
       const blueStart = config.durationMinutes - config.blueMinutes;
       cell.className = "timer " + (minutes >= blueStart ? "blue" : minutes <= config.redMinutes ? "red" : minutes <= config.yellowMinutes ? "yellow" : "green");
     });
+    updateSOSChannelHighlights();
     updateNotifications();
   }, 1000);
 }
@@ -575,3 +622,4 @@ function updateNotifications() {
 }
 
 window.addEventListener("bosslanguagechange", () => location.reload());
+
