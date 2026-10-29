@@ -255,16 +255,31 @@ function configFor(name) { return bossConfigs[name] || defaultBossConfigs[name] 
 // số channel tự trở lại trạng thái bình thường.
 const sosChannelStyle = document.createElement("style");
 sosChannelStyle.textContent = `
+  @keyframes channelSOSBlink {
+    0%, 100% {
+      color: #ff2d2d;
+      text-shadow:
+        0 0 3px #ff0000,
+        0 0 6px #ff0000;
+    }
+
+    50% {
+      color: #ffffff;
+      text-shadow:
+        0 0 5px #ffffff,
+        0 0 10px #ff0000,
+        0 0 18px #ff0000;
+    }
+  }
+
   #bossTable td.channel-col.channel-sos {
-    color: #ff3b3b !important;
+    color: #ff2d2d !important;
     font-weight: 900 !important;
-    text-shadow: 0 0 8px rgba(255, 59, 59, 0.75);
+    animation: channelSOSBlink 0.4s infinite;
   }
 
   body.light #bossTable td.channel-col.channel-sos {
-    color: #d40000 !important;
     font-weight: 900 !important;
-    text-shadow: 0 0 5px rgba(212, 0, 0, 0.35);
   }
 `;
 document.head.appendChild(sosChannelStyle);
@@ -622,4 +637,5 @@ function updateNotifications() {
 }
 
 window.addEventListener("bosslanguagechange", () => location.reload());
+
 
