@@ -287,13 +287,12 @@ sosChannelStyle.textContent = `
   }
 
   #bossTable td.channel-col.channel-sos {
-    color: #f76002 !important;
+    color: #ffffff !important;
     font-weight: 900 !important;
     position: relative;
     z-index: 5;
     animation: channelSOSBlink 0.5s ease-in-out infinite;
     transform-origin: center center;
-    -webkit-text-stroke: 1px #000000;
   }
 
   #bossTable td.channel-col.channel-sos::before {
